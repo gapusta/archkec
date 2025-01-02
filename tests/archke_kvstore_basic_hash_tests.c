@@ -14,52 +14,38 @@ void print(const char* string, int n) {
 }
 
 void test1() {
-    char* expected = "my-value-1";
-
-    int keySize = strlen("my-key-1");
-    int valueSize = strlen(expected);
-
-    char* key = malloc(keySize);
-    char* value = malloc(valueSize);
-    if (key == NULL || value == NULL) {
-        perror("malloc");
-        goto clear;
-    }
-
-    memcpy(key, "key", keySize);
-    memcpy(value, expected, valueSize);
-    
-    int code = rchkKVStorePut(key, keySize, value, valueSize);
+    int code = rchkKVStorePut("my_key", strlen("my_key"), "my_value_2112", strlen("my_value_2112"));
     if (code < 0) {
         printf("Test 1 failed: 'put' returned error code: %d\n", code);
-        goto clear;
+        return;
     }
     
-    valueSize = 0;
-    value = NULL;
+    char* value = NULL;
+    int valueSize = 0;
 
-    code = rchkKVStoreGet(key, keySize, &value, &valueSize);
+    code = rchkKVStoreGet("my_key", strlen("my_key"), &value, &valueSize);
     if (code == ARCHKE_KVSTORE_NOT_FOUND) {
         printf("Test 1 failed: 'get' returned 'not found' code\n");
-        goto clear;
+        return;
     }
     if (code < 0) {
         printf("Test 1 failed: 'get' returned error code: %d\n", code);
-        goto clear;
+        return;
     }
 
-    print(value, valueSize);
+    // print(value, valueSize);
 
-    if (strcmp(value, expected) != 0) {
-        printf("Test 1 failed\n");
-        goto clear;
+    if (valueSize != strlen("my_value_2112")) {
+        printf("Test 1 failed: sizes do not match\n");
+        return;
+    }
+
+    if (strcmp(value, "my_value_2112") != 0) {
+        printf("Test 1 failed: contents do not match\n");
+        return;
     }
 
     printf("Test 1 passed\n");
-
-clear:
-    free(key);
-    free(value);
 }
 
 int main(void) {
