@@ -16,7 +16,16 @@ typedef struct RchkBucketNode {
     struct RchkBucketNode* next;
 } RchkBucketNode;
 
-RchkBucketNode* buckets[ARCHKE_BUCKETS];
+static RchkBucketNode* buckets[ARCHKE_BUCKETS];
+
+static uint64_t _rchkHash(const char* target, int targetSize) {
+    uint64_t hash = FNV_OFFSET;
+    for (int i=0; i<targetSize; i++) {
+        hash ^= (uint64_t)(unsigned char)(target[i]);
+        hash *= FNV_PRIME;
+    }
+    return hash;
+}
 
 int rchkKVStoreInit() {
     for (int i=0; i<ARCHKE_BUCKETS; i++) {
@@ -24,15 +33,6 @@ int rchkKVStoreInit() {
     }
 
     return 0;
-}
-
-uint64_t _rchkHash(const char* target, int targetSize) {
-    uint64_t hash = FNV_OFFSET;
-    for (int i=0; i<targetSize; i++) {
-        hash ^= (uint64_t)(unsigned char)(target[i]);
-        hash *= FNV_PRIME;
-    }
-    return hash;
 }
 
 RchkBucketNode* _rchkKVStoreSearch(uint64_t bucket, char* key, int keySize) {
