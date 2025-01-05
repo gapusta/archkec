@@ -30,6 +30,16 @@ binary_string_tests_debug: ../archke_binary_string_reader.c archke_binary_string
 	gcc *.o -o exed
 	rm *.o
 
+binary_string_array_tests: ../archke_binary_string_array_reader.c archke_binary_string_array_reader_tests.c
+	gcc -Wall -I.. -c $^
+	gcc *.o -o exe
+	rm *.o
+
+binary_string_array_tests_debug: ../archke_binary_string_array_reader.c archke_binary_string_array_reader_tests.c
+	gcc -Wall -I.. -c -g $^
+	gcc *.o -o exed
+	rm *.o
+
 clean:
 	rm exe
 
