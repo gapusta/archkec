@@ -30,15 +30,12 @@ RchkBinaryStringArrayReader* rchkBinaryStringArrayReaderNew(char* buffer, int bu
 	reader->state = ARCHKE_BSAR_ARRAY;
 	
 	reader->buffer = buffer;
-	reader->bufferIndex = 0;
+	reader->bufferOffset = 0;
 	reader->bufferSize = bufferSize;
 	
 	reader->elements = elements;
 	reader->elementsIndex = 0;
-	reader->elementsSize = 0;
-	reader->elementsMax = ARCHKE_BSAR_ELEMENTS_MAX_SIZE;
-
-	reader->elementSize = 0;
+	reader->elementsCount = 0;
 
 	return reader;
 }
@@ -63,14 +60,18 @@ int rchkBinaryStringArrayReaderProcess(RchkBinaryStringArrayReader* reader, char
 			case ARCHKE_BSAR_ARRAY_SIZE:
 				if (current == '\r') continue;
 				if (current == '\n') {
-					reader->state = ARCHKE_BSAR_ELEMENT;
-					continue;
+					if (reader->elementsCount > 0) {
+						reader->state = ARCHKE_BSAR_ELEMENT;
+						continue;
+					}
+
+					reader->state = ARCHKE_BSAR_DONE;
 				}
 
 				digit = current - '0';
 
 				if (0 <= digit && digit <= 9) {
-					reader->elementsSize = reader->elementsSize * 10 + digit;
+					reader->elementsCount = reader->elementsCount * 10 + digit;
 					continue;
 				}
 
@@ -89,9 +90,19 @@ int rchkBinaryStringArrayReaderProcess(RchkBinaryStringArrayReader* reader, char
 
 				if (current == '\r') continue;
 				if (current == '\n') {
-					element->bytes = reader->buffer + reader->bufferIndex;
-					reader->elementSize = element->size;
-					reader->state = ARCHKE_BSAR_ELEMENT_DATA;
+					if (element->size > 0) {
+						element->bytes = reader->buffer + reader->bufferOffset;
+						reader->state = ARCHKE_BSAR_ELEMENT_DATA;						
+						continue;
+					}
+
+					reader->elementsIndex++;
+					if (reader->elementsIndex < reader->elementsCount) {
+						reader->state = ARCHKE_BSAR_ELEMENT;
+					} else {
+						reader->state = ARCHKE_BSAR_DONE;
+					}
+
 					continue;
 				}
 
@@ -104,13 +115,14 @@ int rchkBinaryStringArrayReaderProcess(RchkBinaryStringArrayReader* reader, char
 
 				break;
 			case ARCHKE_BSAR_ELEMENT_DATA:
-				reader->buffer[reader->bufferIndex] = current;
-				reader->bufferIndex++;
-				reader->elementSize--;
+				element = reader->elements + reader->elementsIndex;
 
-				if (reader->elementSize <= 0) {
+				reader->buffer[reader->bufferOffset] = current;
+				reader->bufferOffset++;
+
+				if (reader->buffer + reader->bufferOffset == element->bytes + element->size) {
 					reader->elementsIndex++;
-					if (reader->elementsIndex < reader->elementsSize) {
+					if (reader->elementsIndex < reader->elementsCount) {
 						reader->state = ARCHKE_BSAR_ELEMENT;
 					} else {
 						reader->state = ARCHKE_BSAR_DONE;
@@ -135,10 +147,11 @@ RchkArrayElement* rchkBinaryStringArrayReaderData(RchkBinaryStringArrayReader* r
 }
 
 int rchkBinaryStringArrayReaderDataSize(RchkBinaryStringArrayReader* reader) {
-	return reader->elementsSize;
+	return reader->elementsCount;
 }
 
 void rchkBinaryStringArrayReaderFree(RchkBinaryStringArrayReader* reader) {
 	free(reader);
+	free(reader->elements);
 }
 

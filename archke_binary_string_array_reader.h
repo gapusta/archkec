@@ -13,11 +13,9 @@ typedef struct RchkBinaryStringArrayReader { // Archke simple string reader
 	int state;
 	char* buffer; // internal memory arena, array elements will point to parts of this memory chunk
 	int bufferSize;
-	int bufferIndex;
+	int bufferOffset;
     RchkArrayElement* elements;
-	int elementsMax;
-	int elementSize; // individual element's size, gets decreased
-	int elementsSize;
+	int elementsCount;
 	int elementsIndex;
 } RchkBinaryStringArrayReader;
 
