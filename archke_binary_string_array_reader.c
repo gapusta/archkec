@@ -151,7 +151,7 @@ int rchkBinaryStringArrayReaderDataSize(RchkBinaryStringArrayReader* reader) {
 }
 
 void rchkBinaryStringArrayReaderFree(RchkBinaryStringArrayReader* reader) {
-	free(reader);
 	free(reader->elements);
+	free(reader);
 }
 
