@@ -11,12 +11,13 @@
 typedef struct RchkBucketNode {
     char* key;
     int keySize;
-    char* value;
-    int valueSize;
+    void* value;
     struct RchkBucketNode* next;
 } RchkBucketNode;
 
-static RchkBucketNode* buckets[ARCHKE_BUCKETS];
+struct KVStore {
+    RchkBucketNode** buckets;
+};
 
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
@@ -27,43 +28,53 @@ static uint64_t _rchkHash(const char* target, int targetSize) {
     return hash;
 }
 
-int rchkKVStoreInit() {
-    for (int i=0; i<ARCHKE_BUCKETS; i++) {
-        buckets[i] = NULL;
+KVStore* rchkKVStoreNew() {
+    KVStore* new = malloc(sizeof(KVStore));
+    if (new == NULL) {
+        return NULL;
     }
 
-    return 0;
+    new->buckets = malloc(ARCHKE_BUCKETS * sizeof(RchkBucketNode*));
+    if (new->buckets == NULL) {
+        free(new);
+        return NULL;
+    }
+
+    for (int i=0; i<ARCHKE_BUCKETS; i++) {
+        new->buckets[i] = NULL;
+    }
+
+    return new;
 }
 
-RchkBucketNode* _rchkKVStoreSearch(uint64_t bucket, char* key, int keySize) {
-    RchkBucketNode* next = buckets[bucket];
+RchkBucketNode* _rchkKVStoreSearch(KVStore* store, uint64_t bucketIndex, char* key, int keySize) {
+    RchkBucketNode* node = store->buckets[bucketIndex];
 
-    while(next != NULL) {
-        if (next->keySize != keySize) {
-            next = next->next;
+    while(node != NULL) {
+        if (node->keySize != keySize) {
+            node = node->next;
             continue;
         }
 
         for (int i=0; i<keySize; i++) {
-            if (next->key[i] != key[i]) {
-                next = next->next;
+            if (node->key[i] != key[i]) {
+                node = node->next;
                 continue;
             }
         }
 
-        return next; 
+        return node; 
     }
 
     return NULL;
 }
 
-int rchkKVStorePut(char* key, int keySize, char* value, int valueSize) {
+int rchkKVStorePut(KVStore* store, char* key, int keySize, void* value) {
     uint64_t index = _rchkHash(key, keySize) % ARCHKE_BUCKETS;
 
-    RchkBucketNode* node = _rchkKVStoreSearch(index, key, keySize);
+    RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
     if (node != NULL) {
         node->value = value;
-        node->valueSize = valueSize;
         return 0;
     }
 
@@ -75,25 +86,40 @@ int rchkKVStorePut(char* key, int keySize, char* value, int valueSize) {
     new->key = key;
     new->keySize = keySize;
     new->value = value;
-    new->valueSize = valueSize;
-    new->next = buckets[index];
+    new->next = store->buckets[index];
 
-    buckets[index] = new;
+    store->buckets[index] = new;
 
     return 0;    
 }
 
-int rchkKVStoreGet(char* key, int keySize, char** value, int* valueSize) {
+void* rchkKVStoreGet(KVStore* store, char* key, int keySize) {
     uint64_t index = _rchkHash(key, keySize) % ARCHKE_BUCKETS;
 
-    RchkBucketNode* node = _rchkKVStoreSearch(index, key, keySize);
+    RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
     if (node != NULL) {
-        (*value) = node->value;
-        (*valueSize) = node->valueSize;
-        
-        return 0;
+        return node->value;
     }
 
-    return ARCHKE_KVSTORE_NOT_FOUND;
+    return NULL;
+}
+
+void  rchkKVStoreFree(KVStore* store) {
+    RchkBucketNode* current;
+    RchkBucketNode* next;
+
+    for (int i=0; i<ARCHKE_BUCKETS; i++) {
+        current = store->buckets[i];
+
+        while (current != NULL)
+        {
+            next = current->next;
+            free(current);
+            current = next;
+        }
+    }
+
+    free(store->buckets);
+    free(store);
 }
 

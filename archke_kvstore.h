@@ -1,11 +1,12 @@
 #ifndef ARCHKE_KVSTORE_HASH
 #define ARCHKE_KVSTORE_HASH
 
-#define ARCHKE_KVSTORE_NOT_FOUND 1
+typedef struct KVStore KVStore;
 
-int rchkKVStoreInit();
-int rchkKVStorePut(char* key, int keySize, char* value, int valueSize);
-int rchkKVStoreGet(char* key, int keySize, char** value, int* valueSize);
+KVStore* rchkKVStoreNew();
+int   rchkKVStorePut(KVStore* store, char* key, int keySize, void* value);
+void* rchkKVStoreGet(KVStore* store, char* key, int keySize);
+void  rchkKVStoreFree(KVStore* store);
 
 #endif
 
