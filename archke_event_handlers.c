@@ -10,9 +10,7 @@
 #include "archke_event_handlers.h"
 #include "archke_logs.h"
 
-#define ARCHKE_WRITE_MAX_OUTPUTS 3
-
-// TODO: Test this function
+/*
 void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	Client* client = (Client*) clientData;
 
@@ -93,8 +91,6 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 	}
 }
 
-#undef ARCHKE_WRITE_MAX_OUTPUTS
-
 void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	char buffer[256];
 	Client* client = (Client*) clientData;
@@ -143,6 +139,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	}
 }
 
+
 void rchkHandleAcceptEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	int serverSocketFd = *((int*)clientData);
 
@@ -189,4 +186,5 @@ void rchkHandleAcceptEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* e
 	}
 
 }
+*/
 
