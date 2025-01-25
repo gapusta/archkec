@@ -5,35 +5,36 @@
 #define ARCHKE_BSAR_ERROR_EXPECTED_ELEMENT_START_SIGN -2
 
 typedef struct RchkArrayElement {
-	char* bytes;
+	int filled;
 	int size;
+	char* bytes;
 } RchkArrayElement;
 
 typedef struct RchkClient {
 	int fd;
 
+	// input
 	int readState;	
 	char* readBuffer;
 	int readBufferSize;
 	int readBufferPos;
+	int readBufferRead;
 
     RchkArrayElement* in;
 	int inCount;
 	int inIndex;
 	
-	char* writeBuffer;
-	int writeBufferSize;
-	int writeBufferPos;
-    
+	// output
 	RchkArrayElement* out;
 	int outCount;
 	int outIndex;
+	int outSent;
 } RchkClient;
 
 RchkClient* rchkClientNew(int fd);
 void rchkClientFree(RchkClient* client);
 
-int rchkProcessInputQuery(RchkClient* client, char* bytes, int occupied);
+int rchkProcessInputQuery(RchkClient* client);
 int rchkIsProcessInputQueryDone(RchkClient* client);
 
 #endif

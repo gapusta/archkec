@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "archke_server.h"
 
 #define ARCHKE_ELEMENTS_MAX_SIZE 256
@@ -16,15 +17,14 @@ RchkClient* rchkClientNew(int fd) {
     RchkClient* client = NULL;
     RchkArrayElement* in = NULL;
     RchkArrayElement* out = NULL;
-    char* inBuffer = NULL;
-    char* outBuffer = NULL;
+    char* readBuffer = NULL;
 
     // input memory arena and array
-    inBuffer = malloc(ARCHKE_ELEMENTS_MEMORY_MAX_SIZE * sizeof(char));
-    if (inBuffer == NULL) {
+    readBuffer = malloc(ARCHKE_ELEMENTS_MEMORY_MAX_SIZE * sizeof(char));
+    if (readBuffer == NULL) {
         goto client_create_err;
     }
-	memset(inBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
+	memset(readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
 
     in = malloc(ARCHKE_ELEMENTS_MAX_SIZE * sizeof(RchkArrayElement));
 	if (in == NULL) {
@@ -32,16 +32,11 @@ RchkClient* rchkClientNew(int fd) {
 	}
 	for (int i=0; i<ARCHKE_ELEMENTS_MAX_SIZE; i++) {
 		in[i].size = 0;
+		in[i].filled = 0;
 		in[i].bytes = NULL;
 	}
 
-    // output memory arena and array
-    outBuffer = malloc(ARCHKE_ELEMENTS_MEMORY_MAX_SIZE * sizeof(char));
-    if (inBuffer == NULL) {
-        goto client_create_err;
-    }
-	memset(outBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
-
+    // output array
     out = malloc(ARCHKE_ELEMENTS_MAX_SIZE * sizeof(RchkArrayElement));
 	if (in == NULL) {
 		goto client_create_err;
@@ -59,17 +54,13 @@ RchkClient* rchkClientNew(int fd) {
     client->fd = fd;
 
     client->readState = ARCHKE_BSAR_ARRAY;
-    client->readBuffer = inBuffer;
+    client->readBuffer = readBuffer;
     client->readBufferPos = 0;
     client->readBufferSize = ARCHKE_ELEMENTS_MEMORY_MAX_SIZE;
     
     client->in = in;
     client->inIndex = 0;
     client->inCount = 0;
-
-    client->writeBuffer = outBuffer;
-    client->writeBufferPos = 0;
-    client->writeBufferSize = ARCHKE_ELEMENTS_MEMORY_MAX_SIZE;
 
     client->out = out;
     client->outIndex = 0;
@@ -78,21 +69,20 @@ RchkClient* rchkClientNew(int fd) {
     return client;
 
 client_create_err:
-    if (inBuffer != NULL) free(inBuffer);
+    if (readBuffer != NULL) free(readBuffer);
     if (in != NULL) free(in);
-    if (outBuffer != NULL) free(outBuffer);
     if (out != NULL) free(out);
     if (client != NULL) free(client);
 
     return NULL;
 }
 
-int rchkProcessInputQuery(RchkClient* client, char* bytes, int occupied) {
+int rchkProcessInputQuery(RchkClient* client) {
     RchkArrayElement* currentElement = NULL;
 	int digit = 0;
 
-	for (int idx=0; idx<occupied; idx++) {
-		char currentByte = bytes[idx];
+	for (int idx=0; idx < client->readBufferRead; idx++) {
+		char currentByte = client->readBuffer[idx];
 
 		switch(client->readState) {
 			case ARCHKE_BSAR_ARRAY:
@@ -138,7 +128,11 @@ int rchkProcessInputQuery(RchkClient* client, char* bytes, int occupied) {
 				if (currentByte == '\r') continue;
 				if (currentByte == '\n') {
 					if (currentElement->size > 0) {
-						currentElement->bytes = &client->readBuffer[client->readBufferPos];
+						currentElement->bytes = malloc(currentElement->size);
+						if (currentElement->bytes == NULL) {
+							perror("Cannot alloc memory for input array element data");
+							exit(1);
+						}
 						client->readState = ARCHKE_BSAR_ELEMENT_DATA;						
 						continue;
 					}
@@ -163,12 +157,11 @@ int rchkProcessInputQuery(RchkClient* client, char* bytes, int occupied) {
 
 				break;
 			case ARCHKE_BSAR_ELEMENT_DATA:
-				client->readBuffer[client->readBufferPos] = currentByte;
-				client->readBufferPos++;
-
 				currentElement = &client->in[client->inIndex];
+				currentElement->bytes[currentElement->filled] = currentByte;
+				currentElement->filled++;
 
-				if (client->readBuffer + client->readBufferPos == currentElement->bytes + currentElement->size) {
+				if (currentElement->filled == currentElement->size) {
 					client->inIndex++;
 					if (client->inIndex < client->inCount) {
 						client->readState = ARCHKE_BSAR_ELEMENT;
@@ -192,9 +185,8 @@ int rchkIsProcessInputQueryDone(RchkClient* client) {
 
 void rchkClientFree(RchkClient* client) {
     free(client->readBuffer);
-    free(client->writeBuffer);    
-    free(client->in);
-    free(client->out);
+    free(client->in); // TODO: free 'in' array elements as well
+    free(client->out); // TODO: free 'out' array elements as well
     free(client);
 }
 
