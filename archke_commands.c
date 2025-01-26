@@ -45,6 +45,7 @@ void echoCommand(RchkClient* client) {
     
     // 3.
     out[0].next = &out[1];
+    out[1].next = NULL;
     out[1].size = client->in[1].size;
     out[1].bytes = malloc(out[1].size);
     if (out[1].bytes == NULL) {

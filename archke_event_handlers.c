@@ -13,44 +13,58 @@
 #include "archke_commands.h"
 
 void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
-	// RchkClient* client = (RchkClient*) clientData;
+	RchkClient* client = (RchkClient*) clientData;
 
-	// RchkSocketBuffer buffs[ARCHKE_WRITE_MAX_OUTPUTS];
+	RchkSocketBuffer buffs[ARCHKE_WRITE_MAX_OUTPUTS];
 
-	// client->out;
+	RchkResponseElement* el = client->unread;
+	int outputs = 0;
+	while (el != NULL) {
+		buffs[outputs].size = el->size;
+		buffs[outputs].buffer = el->bytes;
+		outputs++;
+		el = el->next;
+	}
 
-	// int nbytes = rchkSocketWritev(client->fd, buffs, outputs);
+	int read = rchkSocketWritev(client->fd, buffs, outputs);
+	if (read < 0) {
+		logError("Write to client failed");
+		// close connections (exactly how its handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
+		rchkSocketShutdown(client->fd);
+		rchkEventLoopUnregister(eventLoop, client->fd);
+		rchkSocketClose(client->fd);
+		// free resources
+		rchkClientFree(client);
+		return;
+	}
 
-	// if (nbytes < 0) {
-	// 	logError("Write to client failed");
-	// 	// close connections (exactly how its handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
-	// 	rchkSocketShutdown(client->fd);
-	// 	rchkEventLoopUnregister(eventLoop, client->fd);
-	// 	rchkSocketClose(client->fd);
-	// 	// free resources
-	// 	rchkClientFree(client);
-	// 	return;
-	// }
+	el = client->unread;
+	while (el != NULL) {
+		if (read <= el->size) {
+			client->unread->bytes = el->bytes + read;
+			client->unread->size = el->size - read;
+			client->unread->next = el->next;
+			break;
+		}
+		read = read - el->size;
+		el = el->next;
+	}
 
-	// client->outSent = client->outSent + nbytes;
+	// check if all the data has been sent
+	if (client->unread == NULL) {
+		// TODO: clean 'in' and 'out'
 
-	// // check if all the data has been sent
-	// if (client->outSent == prefixSize + payloadSize + suffixSize) {
-	// 	client->outSent = 0;
-
-	// 	// TODO: clean 'in' and 'out'
-
-	// 	// register read handler for client
-	// 	RchkClientConfig config = { .data = client, .free = NULL };
-	// 	if (rchkEventLoopRegister(eventLoop, client->fd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleReadEvent, &config) < 0) {
-	// 		logError("Client socket read event registration error");
-	// 		rchkSocketShutdown(client->fd);
-	// 		rchkEventLoopUnregister(eventLoop, client->fd);
-	// 		rchkSocketClose(client->fd);
-	// 		rchkClientFree(client);
-	// 		return;
-	// 	}
-	// }
+		// register read handler for client
+		RchkClientConfig config = { .data = client, .free = NULL };
+		if (rchkEventLoopRegister(eventLoop, client->fd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleReadEvent, &config) < 0) {
+			logError("Client socket read event registration error");
+			rchkSocketShutdown(client->fd);
+			rchkEventLoopUnregister(eventLoop, client->fd);
+			rchkSocketClose(client->fd);
+			rchkClientFree(client);
+			return;
+		}
+	}
 }
 
 void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
@@ -96,7 +110,10 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	command(client);
 
 	// register write handler to send response back
+	client->unread = client->out;
+	client->unreadOffset = 0;
 	RchkClientConfig config = { .data = client, .free = NULL };
+
 	if (rchkEventLoopRegister(eventLoop, client->fd, ARCHKE_EVENT_LOOP_WRITE_EVENT, rchkHandleWriteEvent, &config) < 0) {
 		logError("Client socket write event registration error");
 		rchkSocketShutdown(client->fd);

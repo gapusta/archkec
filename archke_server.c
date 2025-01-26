@@ -53,7 +53,8 @@ RchkClient* rchkClientNew(int fd) {
     client->inCount = 0;
 
 	client->out = NULL;
-	client->outSent = 0;
+	client->unread = NULL;
+	client->unreadOffset = 0;
 
     return client;
 
