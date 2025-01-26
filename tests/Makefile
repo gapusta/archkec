@@ -10,12 +10,12 @@ hash_basic_tests_debug: ../archke_kvstore_basic_hash.c archke_kvstore_basic_hash
 	gcc *.o -o exed
 	rm *.o
 
-client_tests: ../archke_server.c archke_client_tests.c
+client_tests: ../archke_server.c archke_client_tests.c ../archke_error.c
 	gcc -Wall -I.. -c $^
 	gcc *.o -o exe
 	rm *.o
 
-client_tests_debug: ../archke_server.c archke_client_tests.c
+client_tests_debug: ../archke_server.c archke_client_tests.c ../archke_error.c
 	gcc -Wall -I.. -c -g $^
 	gcc *.o -o exed
 	rm *.o
