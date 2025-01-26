@@ -14,7 +14,7 @@ void test1() {
 		exit(1);
 	}
 
-	client->readBufferRead = inputSize; memcpy(client->readBuffer, input, inputSize); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize; memcpy(client->readBuffer, input, inputSize); rchkProcessInputQuery(client);
 
 	if (!rchkIsProcessInputQueryDone(client)) {
 		printf("Test #1 failed: Incorrect client state: expected 'DONE'\n");
@@ -72,14 +72,14 @@ void test2() {
 		exit(1);
 	}
 
-	client->readBufferRead = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
 
 	if (!rchkIsProcessInputQueryDone(client)) {
 		printf("Test #2 failed: Incorrect client state: expected 'DONE'\n");
@@ -128,15 +128,15 @@ void test3() {
 		exit(1);
 	}
 
-	client->readBufferRead = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize9; memcpy(client->readBuffer, input9, inputSize9); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize9; memcpy(client->readBuffer, input9, inputSize9); rchkProcessInputQuery(client);
 
 	if (!rchkIsProcessInputQueryDone(client)) {
 		printf("Test #3 failed: Incorrect client state: expected 'DONE'\n");
@@ -193,23 +193,23 @@ void test4() {
 		exit(1);
 	}
 
-	client->readBufferRead = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize9; memcpy(client->readBuffer, input9, inputSize9); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize10; memcpy(client->readBuffer, input10, inputSize10); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize11; memcpy(client->readBuffer, input11, inputSize11); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize12; memcpy(client->readBuffer, input12, inputSize12); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize13; memcpy(client->readBuffer, input13, inputSize13); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize14; memcpy(client->readBuffer, input14, inputSize14); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize15; memcpy(client->readBuffer, input15, inputSize15); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize16; memcpy(client->readBuffer, input16, inputSize16); rchkProcessInputQuery(client);
-	client->readBufferRead = inputSize17; memcpy(client->readBuffer, input17, inputSize17); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize9; memcpy(client->readBuffer, input9, inputSize9); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize10; memcpy(client->readBuffer, input10, inputSize10); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize11; memcpy(client->readBuffer, input11, inputSize11); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize12; memcpy(client->readBuffer, input12, inputSize12); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize13; memcpy(client->readBuffer, input13, inputSize13); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize14; memcpy(client->readBuffer, input14, inputSize14); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize15; memcpy(client->readBuffer, input15, inputSize15); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize16; memcpy(client->readBuffer, input16, inputSize16); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize17; memcpy(client->readBuffer, input17, inputSize17); rchkProcessInputQuery(client);
 	
 	if (!rchkIsProcessInputQueryDone(client)) {
 		printf("Test #4 failed: Incorrect client state: expected 'DONE'\n");

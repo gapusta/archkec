@@ -10,6 +10,12 @@ typedef struct RchkArrayElement {
 	char* bytes;
 } RchkArrayElement;
 
+typedef struct RchkResponseElement {
+	int size;
+	char* bytes;
+	struct RchkResponseElement* next;
+} RchkResponseElement;
+
 typedef struct RchkClient {
 	int fd;
 
@@ -17,17 +23,14 @@ typedef struct RchkClient {
 	int readState;	
 	char* readBuffer;
 	int readBufferSize;
-	int readBufferPos;
-	int readBufferRead;
+	int readBufferOccupied;
 
     RchkArrayElement* in;
 	int inCount;
 	int inIndex;
 	
 	// output
-	RchkArrayElement* out;
-	int outCount;
-	int outIndex;
+	RchkResponseElement* out;
 	int outSent;
 } RchkClient;
 

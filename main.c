@@ -1,10 +1,14 @@
 #include <stdlib.h>
+#include "archke_commands.h"
 #include "archke_error.h"
 #include "archke_socket.h"
 #include "archke_event_loop.h"
 #include "archke_event_handlers.h"
 
 int main(void) {
+	// server initialization
+	initCommands();
+
 	// create socket, open it and make it listen on port
 	int serverSocketFd = rchkServerSocketNew(9999);
 	if (serverSocketFd < 0) {
