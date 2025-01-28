@@ -6,9 +6,8 @@
 
 #define ARCHKE_HEADER_SIZE_MAX 32
 
-static char* prefixSimpleString = "+";
-
-static char* suffixSimpleString = "\r\n";
+#define SIMPLE_STRING_PREFIX "+"
+#define SIMPLE_STRING_SUFFIX "\r\n"
 
 KVStore* commands;
 
@@ -26,34 +25,40 @@ KVStore* getCommands() { return commands; }
 */
 void echoCommand(RchkClient* client) {
     // 1.
-    RchkResponseElement* out = malloc(3 * sizeof(RchkResponseElement));
-    if (out == NULL) {
+    RchkResponseElement* first = malloc(sizeof(RchkResponseElement));
+    RchkResponseElement* second = malloc(sizeof(RchkResponseElement));
+    RchkResponseElement* third = malloc(sizeof(RchkResponseElement));
+    if (first == NULL || second == NULL || third == NULL) {
         rchkExitFailure("Echo command memory allocation failure #1");
     }
     
     // 2. prefix
-    out[0].size = strlen(prefixSimpleString);
-    out[0].bytes = prefixSimpleString;
+    first->size = strlen(SIMPLE_STRING_PREFIX);
+    first->bytes = malloc(first->size);
+    if (first->bytes == NULL) {
+        rchkExitFailure("Echo command memory allocation failure #2");
+    }
+    memcpy(first->bytes, SIMPLE_STRING_PREFIX, first->size);
     
     // 3. body
     RchkArrayElement* body = &client->in[1];
-    out[1].size = body->size;
-    out[1].bytes = malloc(body->size);
-    if (out[1].bytes == NULL) {
-        free(out);
-        rchkExitFailure("Echo command memory allocation failure #2");
+    second->size = body->size;
+    second->bytes = malloc(body->size);
+    if (second->bytes == NULL) {
+        rchkExitFailure("Echo command memory allocation failure #3");
     }
-    memcpy(out[1].bytes, body->bytes, body->size);
+    memcpy(second->bytes, body->bytes, second->size);
     
     // 4. suffix
-    out[2].bytes = suffixSimpleString;
-    out[2].size = strlen(suffixSimpleString);
-
+    third->size = strlen(SIMPLE_STRING_SUFFIX);
+    third->bytes = malloc(third->size);
+    if (third->bytes == NULL) {
+        rchkExitFailure("Echo command memory allocation failure #4");
+    }
+    memcpy(third->bytes, SIMPLE_STRING_SUFFIX, third->size);
+    
     // 5.
-    client->out = &out[0];
-    out[0].next = &out[1];
-    out[1].next = &out[2];
-    out[2].next = NULL;
+    client->out = first; first->next = second; second->next = third; third->next = NULL;
     
     return;
 }

@@ -66,6 +66,35 @@ client_create_err:
     return NULL;
 }
 
+void rchkClientReinitialize(RchkClient* client) {
+	client->readState = ARCHKE_BSAR_ARRAY;
+	client->readBufferOccupied = 0;
+	memset(client->readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
+
+	// free 'input'
+	RchkArrayElement* in = client->in;
+	for (int i=0; i<client->inCount; i++) {
+		free(in[i].bytes);
+		in[i].size = 0;
+		in[i].filled = 0;
+		in[i].bytes = NULL;
+	}
+	client->inIndex = 0;
+    client->inCount = 0;
+
+	// free 'output'
+	RchkResponseElement* current = client->out;
+	while (current != NULL) {
+		RchkResponseElement* next = current->next;
+		free(current->bytes);
+		free(current);
+		current = next;
+	}
+	client->out = NULL;
+	client->unread = NULL;
+	client->unreadOffset = 0;
+}
+
 int rchkProcessInputQuery(RchkClient* client) {
     RchkArrayElement* currentElement = NULL;
 	int digit = 0;

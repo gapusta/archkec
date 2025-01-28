@@ -40,7 +40,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 
 	el = client->unread;
 	while (el != NULL) {
-		if (read <= el->size) {
+		if (read < el->size) {
 			client->unread->bytes = el->bytes + read;
 			client->unread->size = el->size - read;
 			client->unread->next = el->next;
@@ -51,8 +51,8 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 	}
 
 	// check if all the data has been sent
-	if (client->unread == NULL) {
-		// TODO: clean 'in' and 'out'
+	if (el == NULL) {
+		rchkClientReinitialize(client);
 
 		// register read handler for client
 		RchkClientConfig config = { .data = client, .free = NULL };
@@ -70,7 +70,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
 	
-	int nbytes = rchkSocketRead(client->fd, client->readBuffer, sizeof(client->readBufferSize));
+	int nbytes = rchkSocketRead(client->fd, client->readBuffer, client->readBufferSize);
 	client->readBufferOccupied = nbytes;	
 
 	if (nbytes < 0) {
@@ -103,9 +103,9 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	}
 
 	// run command
-	void (*command) (RchkClient*);
 	KVStore* commands = getCommands();
-	command = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
+
+	void (*command) (RchkClient*) = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
 
 	command(client);
 
