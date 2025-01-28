@@ -66,6 +66,10 @@ client_create_err:
     return NULL;
 }
 
+// Commands are expected to heap allocate every in.bytes
+// Commands are expected to heap allocate every element in 'out' linked list
+// Commands are expected to heap allocate every out.bytes
+// or else free() will explode with error
 void rchkClientReinitialize(RchkClient* client) {
 	client->readState = ARCHKE_BSAR_ARRAY;
 	client->readBufferOccupied = 0;
