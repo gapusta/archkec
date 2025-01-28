@@ -16,31 +16,48 @@ void test1() {
     echoCommand(&client);
 
     RchkResponseElement* first = client.out;
-
-    if (first == NULL || first->next == NULL) {
+    if (first == NULL) {
         printf("Test #1: check #1 failed\n");
         return;
     }
-
-    if (first->size != 4) { // $5\r\n
+    if (first->size != 1) {
         printf("Test #1: check #2 failed\n");
         return;
     }
-
-    if (strncmp(first->bytes, "$5\r\n", first->size) != 0) {
+    if (strncmp(first->bytes, "+", first->size) != 0) {
         printf("Test #1: check #3 failed\n");
         return;
     }
 
-    RchkResponseElement* next = first->next;
-
-    if (next->size != 5) {
+    RchkResponseElement* second = first->next;
+    if (second == NULL) {
         printf("Test #1: check #4 failed\n");
         return;
     }
-
-    if (strncmp(next->bytes, "hello", next->size) != 0) {
+    if (second->size != 5) {
         printf("Test #1: check #5 failed\n");
+        return;
+    }
+    if (strncmp(second->bytes, "hello", second->size) != 0) {
+        printf("Test #1: check #6 failed\n");
+        return;
+    }
+
+    RchkResponseElement* third = second->next;
+    if (third == NULL) {
+        printf("Test #1: check #7 failed\n");
+        return;
+    }
+    if (third->next != NULL) {
+        printf("Test #1: check #8 failed\n");
+        return;
+    }
+    if (third->size != 2) {
+        printf("Test #1: check #9 failed\n");
+        return;
+    }
+    if (strncmp(third->bytes, "\r\n", third->size) != 0) {
+        printf("Test #1: check #10 failed\n");
         return;
     }
 
@@ -60,31 +77,48 @@ void test2() {
     echoCommand(&client);
 
     RchkResponseElement* first = client.out;
-
     if (first == NULL) {
-        printf("Test #2: check #1 failed\n");
+        printf("Test #1: check #1 failed\n");
+        return;
+    }
+    if (first->size != 1) {
+        printf("Test #1: check #2 failed\n");
+        return;
+    }
+    if (strncmp(first->bytes, "+", first->size) != 0) {
+        printf("Test #1: check #3 failed\n");
         return;
     }
 
-    if (first->size != 5) { // $52\r\n
-        printf("Test #2: check #2 failed\n");
+    RchkResponseElement* second = first->next;
+    if (second == NULL) {
+        printf("Test #1: check #4 failed\n");
+        return;
+    }
+    if (second->size != 52) {
+        printf("Test #1: check #5 failed\n");
+        return;
+    }
+    if (strncmp(second->bytes, "Aequeosalinocalcalinoceraceoaluminosocupreovitriolic", second->size) != 0) {
+        printf("Test #1: check #6 failed\n");
         return;
     }
 
-    if (strncmp(first->bytes, "$52\r\n", first->size) != 0) {
-        printf("Test #2: check #3 failed\n");
+    RchkResponseElement* third = second->next;
+    if (third == NULL) {
+        printf("Test #1: check #7 failed\n");
         return;
     }
-
-    RchkResponseElement* next = first->next;
-
-    if (next->size != 52) {
-        printf("Test #2: check #4 failed\n");
+    if (third->next != NULL) {
+        printf("Test #1: check #8 failed\n");
         return;
     }
-
-    if (strncmp(next->bytes, "Aequeosalinocalcalinoceraceoaluminosocupreovitriolic", next->size) != 0) {
-        printf("Test #2: check #5 failed\n");
+    if (third->size != 2) {
+        printf("Test #1: check #9 failed\n");
+        return;
+    }
+    if (strncmp(third->bytes, "\r\n", third->size) != 0) {
+        printf("Test #1: check #10 failed\n");
         return;
     }
 
