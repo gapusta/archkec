@@ -153,8 +153,8 @@ void rchkHandleAcceptEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* e
 	};
 	// register read handler for new client. TODO: implement 'free()' 
 	if (rchkEventLoopRegister(eventLoop, clientSocketFd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleReadEvent, &config) < 0) {
-		free(client);
-		rchkSocketClose(clientSocketFd);
+		rchkSocketClose(client->fd);
+		rchkClientFree(client);
 		logError("Client event registration failed");
 	}
 
