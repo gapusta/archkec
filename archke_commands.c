@@ -4,8 +4,6 @@
 #include "archke_commands.h"
 #include "archke_error.h"
 
-#define ARCHKE_HEADER_SIZE_MAX 32
-
 #define SIMPLE_STRING_PREFIX "+"
 #define SIMPLE_STRING_SUFFIX "\r\n"
 
