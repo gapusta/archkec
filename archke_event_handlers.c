@@ -110,7 +110,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	command(client);
 
 	// register write handler to send response back
-	client->unread = client->head;
+	client->unread = client->out;
 	client->unreadOffset = 0;
 	RchkClientConfig config = { .data = client, .free = NULL };
 

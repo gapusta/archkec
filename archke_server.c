@@ -52,7 +52,7 @@ RchkClient* rchkClientNew(int fd) {
     client->inIndex = 0;
     client->inCount = 0;
 
-	client->head = NULL;
+	client->out = NULL;
 	client->tail = NULL;
 	client->unread = NULL;
 	client->unreadOffset = 0;
@@ -67,16 +67,7 @@ client_create_err:
     return NULL;
 }
 
-// Commands are expected to heap allocate every in.bytes
-// Commands are expected to heap allocate every element in 'out' linked list
-// Commands are expected to heap allocate every out.bytes
-// or else free() will explode with error
-void rchkClientReinitialize(RchkClient* client) {
-	client->readState = ARCHKE_BSAR_ARRAY;
-	client->readBufferOccupied = 0;
-	memset(client->readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
-
-	// free 'input'
+static void rchkClearClientInputList(RchkClient* client) {
 	RchkArrayElement* in = client->in;
 	for (int i=0; i<client->inCount; i++) {
 		free(in[i].bytes);
@@ -86,18 +77,39 @@ void rchkClientReinitialize(RchkClient* client) {
 	}
 	client->inIndex = 0;
     client->inCount = 0;
+}
 
-	// free 'output'
-	RchkResponseElement* current = client->head;
+static void rchkClearClientOutputList(RchkClient* client) {
+	RchkResponseElement* current = client->out;
 	while (current != NULL) {
 		RchkResponseElement* next = current->next;
 		free(current);
 		current = next;
 	}
-	client->head = NULL;
+	client->out = NULL;
 	client->tail = NULL;
 	client->unread = NULL;
 	client->unreadOffset = 0;
+}
+
+// Commands are expected to heap allocate every in.bytes
+// Commands are expected to heap allocate every element in 'out' linked list
+// or else free() will explode with error
+void rchkClientReinitialize(RchkClient* client) {
+	client->readState = ARCHKE_BSAR_ARRAY;
+	client->readBufferOccupied = 0;
+	memset(client->readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
+	rchkClearClientInputList(client);
+	rchkClearClientOutputList(client);
+}
+
+void rchkClientFree(RchkClient* client) {
+    free(client->readBuffer);
+	rchkClearClientInputList(client);
+	rchkClearClientOutputList(client);
+    free(client->in); 
+    free(client->out);
+    free(client);
 }
 
 int rchkProcessInputQuery(RchkClient* client) {
@@ -216,8 +228,8 @@ int appendToReply(RchkClient* client, char* data, int dataSize) {
 	element->bytes = (char*) (element + sizeof(RchkResponseElement));
 	memcpy(element->bytes, data, element->size);
 
-	if (!client->head) {
-		client->head = element;
+	if (!client->out) {
+		client->out = element;
 		client->tail = element;
 	} else {
 		client->tail->next = element;
@@ -225,12 +237,5 @@ int appendToReply(RchkClient* client, char* data, int dataSize) {
 	}
 
 	return 0;
-}
-
-void rchkClientFree(RchkClient* client) {
-    free(client->readBuffer);
-    free(client->in); // TODO: free 'in' array elements as well
-    free(client->head); // TODO: free 'out' array elements as well
-    free(client);
 }
 

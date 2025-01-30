@@ -30,7 +30,7 @@ typedef struct RchkClient {
 	int inIndex;
 	
 	// output
-	RchkResponseElement* head;
+	RchkResponseElement* out;
 	RchkResponseElement* tail;
 	RchkResponseElement* unread;
 	int unreadOffset;
