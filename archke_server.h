@@ -37,7 +37,7 @@ typedef struct RchkClient {
 } RchkClient;
 
 RchkClient* rchkClientNew(int fd);
-void rchkClientReinitialize(RchkClient* client);
+void rchkClientReset(RchkClient* client); // reseting client after each command
 void rchkClientFree(RchkClient* client);
 
 int rchkProcessInputQuery(RchkClient* client);

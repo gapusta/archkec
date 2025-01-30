@@ -52,7 +52,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 
 	// check if all the data has been sent
 	if (el == NULL) {
-		rchkClientReinitialize(client);
+		rchkClientReset(client);
 
 		// register read handler for client
 		RchkClientConfig config = { .data = client, .free = NULL };

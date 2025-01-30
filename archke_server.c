@@ -95,7 +95,7 @@ static void rchkClearClientOutputList(RchkClient* client) {
 // Commands are expected to heap allocate every in.bytes
 // Commands are expected to heap allocate every element in 'out' linked list
 // or else free() will explode with error
-void rchkClientReinitialize(RchkClient* client) {
+void rchkClientReset(RchkClient* client) {
 	client->readState = ARCHKE_BSAR_ARRAY;
 	client->readBufferOccupied = 0;
 	memset(client->readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
