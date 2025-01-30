@@ -17,8 +17,8 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 
 	RchkSocketBuffer buffs[ARCHKE_WRITE_MAX_OUTPUTS];
 
-	RchkResponseElement* el = client->unread;
 	int outputs = 0;
+	RchkResponseElement* el = client->unread;
 	while (el != NULL) {
 		buffs[outputs].size = el->size;
 		buffs[outputs].buffer = el->bytes;
@@ -110,7 +110,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	command(client);
 
 	// register write handler to send response back
-	client->unread = client->out;
+	client->unread = client->head;
 	client->unreadOffset = 0;
 	RchkClientConfig config = { .data = client, .free = NULL };
 

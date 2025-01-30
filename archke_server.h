@@ -30,7 +30,8 @@ typedef struct RchkClient {
 	int inIndex;
 	
 	// output
-	RchkResponseElement* out;
+	RchkResponseElement* head;
+	RchkResponseElement* tail;
 	RchkResponseElement* unread;
 	int unreadOffset;
 } RchkClient;
@@ -41,6 +42,8 @@ void rchkClientFree(RchkClient* client);
 
 int rchkProcessInputQuery(RchkClient* client);
 int rchkIsProcessInputQueryDone(RchkClient* client);
+
+int appendToReply(RchkClient* client, char* data, int dataSize);
 
 #endif
 

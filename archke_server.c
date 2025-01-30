@@ -52,7 +52,8 @@ RchkClient* rchkClientNew(int fd) {
     client->inIndex = 0;
     client->inCount = 0;
 
-	client->out = NULL;
+	client->head = NULL;
+	client->tail = NULL;
 	client->unread = NULL;
 	client->unreadOffset = 0;
 
@@ -87,14 +88,14 @@ void rchkClientReinitialize(RchkClient* client) {
     client->inCount = 0;
 
 	// free 'output'
-	RchkResponseElement* current = client->out;
+	RchkResponseElement* current = client->head;
 	while (current != NULL) {
 		RchkResponseElement* next = current->next;
-		free(current->bytes);
 		free(current);
 		current = next;
 	}
-	client->out = NULL;
+	client->head = NULL;
+	client->tail = NULL;
 	client->unread = NULL;
 	client->unreadOffset = 0;
 }
@@ -205,10 +206,31 @@ int rchkIsProcessInputQueryDone(RchkClient* client) {
 	return client->readState == ARCHKE_BSAR_DONE;
 }
 
+int appendToReply(RchkClient* client, char* data, int dataSize) {
+	RchkResponseElement* element = (RchkResponseElement*) malloc(sizeof(RchkResponseElement) + dataSize);
+	if (element == NULL) {
+		return -1;
+	}
+	element->size = dataSize;
+	element->next = NULL;
+	element->bytes = (char*) (element + sizeof(RchkResponseElement));
+	memcpy(element->bytes, data, element->size);
+
+	if (!client->head) {
+		client->head = element;
+		client->tail = element;
+	} else {
+		client->tail->next = element;
+		client->tail = element;
+	}
+
+	return 0;
+}
+
 void rchkClientFree(RchkClient* client) {
     free(client->readBuffer);
     free(client->in); // TODO: free 'in' array elements as well
-    free(client->out); // TODO: free 'out' array elements as well
+    free(client->head); // TODO: free 'out' array elements as well
     free(client);
 }
 
