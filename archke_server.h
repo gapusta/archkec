@@ -43,7 +43,10 @@ void rchkClientFree(RchkClient* client);
 int rchkProcessInputQuery(RchkClient* client);
 int rchkIsProcessInputQueryDone(RchkClient* client);
 
-int appendToReply(RchkClient* client, char* data, int dataSize);
+char* rchkDuplicate(const char* bytes, int size);
+
+int rchkAppendToReply(RchkClient* client, char* data, int dataSize);
+int rchkAppendIntegerToReply(RchkClient* client, int data); // turns integet to string and appends it to reply
 
 #endif
 

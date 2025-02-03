@@ -8,13 +8,16 @@
     Command prototype is [ void cmd(RchkClient* client) ]
 */
 
+void initKvstore();
 void initCommands();
 
-KVStore* getCommands();
+RchkKVStore* getCommands();
 
 // Commands
 
 void echoCommand(RchkClient* client);
+void setCommand(RchkClient* client);
+void getCommand(RchkClient* client);
 
 #endif
 

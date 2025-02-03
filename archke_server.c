@@ -14,6 +14,8 @@
 #define ARCHKE_BSAR_ELEMENT_DATA 4
 #define ARCHKE_BSAR_DONE 5 // end state
 
+#define ARCHKE_MAX_BINARY_SIZE_CHARS 128
+
 RchkClient* rchkClientNew(int fd) {
     RchkClient* client = NULL;
     RchkArrayElement* in = NULL;
@@ -83,6 +85,7 @@ static void rchkClearClientOutputList(RchkClient* client) {
 	RchkResponseElement* current = client->out;
 	while (current != NULL) {
 		RchkResponseElement* next = current->next;
+		free(current->bytes);
 		free(current);
 		current = next;
 	}
@@ -110,6 +113,56 @@ void rchkClientFree(RchkClient* client) {
     free(client->in); 
     free(client->out);
     free(client);
+}
+
+char* rchkDuplicate(const char* bytes, int size) {
+	void* dup = malloc(size);
+    if (dup == NULL) {
+        // TODO: write better error error handling
+        rchkExitFailure("duplication operation failed: malloc");
+    }
+	// return pointer to 'dup'
+    return memcpy(dup, bytes, size);
+}
+
+int rchkAppendToReply(RchkClient* client, char* data, int dataSize) {
+	RchkResponseElement* element = (RchkResponseElement*) malloc(sizeof(RchkResponseElement));
+	if (element == NULL) {
+		return -1;
+	}
+	element->size = dataSize;
+	element->next = NULL;
+	element->bytes = (char*) malloc(dataSize);
+	if (element->bytes == NULL) {
+		return -1;
+	}
+	memcpy(element->bytes, data, element->size);
+
+	if (!client->out) {
+		client->out = element;
+		client->tail = element;
+	} else {
+		client->tail->next = element;
+		client->tail = element;
+	}
+
+	return 0;
+}
+
+int rchkAppendIntegerToReply(RchkClient* client, int data) {
+	// 1. integet to string
+	char integer[ARCHKE_MAX_BINARY_SIZE_CHARS] = { 0 };
+	
+	if (snprintf(integer, ARCHKE_MAX_BINARY_SIZE_CHARS, "%d", data) < 0) {
+		return -1;
+	}
+
+	// 2.
+	if (rchkAppendToReply(client, integer, strlen(integer)) < 0) {
+		return -1;
+	}
+
+	return 0;
 }
 
 int rchkProcessInputQuery(RchkClient* client) {
@@ -216,26 +269,5 @@ int rchkProcessInputQuery(RchkClient* client) {
 
 int rchkIsProcessInputQueryDone(RchkClient* client) {
 	return client->readState == ARCHKE_BSAR_DONE;
-}
-
-int appendToReply(RchkClient* client, char* data, int dataSize) {
-	RchkResponseElement* element = (RchkResponseElement*) malloc(sizeof(RchkResponseElement) + dataSize);
-	if (element == NULL) {
-		return -1;
-	}
-	element->size = dataSize;
-	element->next = NULL;
-	element->bytes = (char*) (element + sizeof(RchkResponseElement));
-	memcpy(element->bytes, data, element->size);
-
-	if (!client->out) {
-		client->out = element;
-		client->tail = element;
-	} else {
-		client->tail->next = element;
-		client->tail = element;
-	}
-
-	return 0;
 }
 

@@ -7,6 +7,7 @@
 
 int main(void) {
 	// server initialization
+	initKvstore();
 	initCommands();
 
 	// create socket, open it and make it listen on port

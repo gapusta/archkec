@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 #include "archke_kvstore.h"
 
@@ -11,11 +12,11 @@
 typedef struct RchkBucketNode {
     char* key;
     int keySize;
-    void* value;
+    RchkKVValue* value;
     struct RchkBucketNode* next;
 } RchkBucketNode;
 
-struct KVStore {
+struct RchkKVStore {
     RchkBucketNode** buckets;
 };
 
@@ -28,8 +29,8 @@ static uint64_t _rchkHash(const char* target, int targetSize) {
     return hash;
 }
 
-KVStore* rchkKVStoreNew() {
-    KVStore* new = malloc(sizeof(KVStore));
+RchkKVStore* rchkKVStoreNew() {
+    RchkKVStore* new = malloc(sizeof(RchkKVStore));
     if (new == NULL) {
         return NULL;
     }
@@ -47,9 +48,10 @@ KVStore* rchkKVStoreNew() {
     return new;
 }
 
-RchkBucketNode* _rchkKVStoreSearch(KVStore* store, uint64_t bucketIndex, char* key, int keySize) {
+// TODO: SEGFAULT happens here
+RchkBucketNode* _rchkKVStoreSearch(RchkKVStore* store, uint64_t bucketIndex, char* key, int keySize) {
     RchkBucketNode* node = store->buckets[bucketIndex];
-
+    
     while(node != NULL) {
         if (node->keySize != keySize) {
             node = node->next;
@@ -69,23 +71,32 @@ RchkBucketNode* _rchkKVStoreSearch(KVStore* store, uint64_t bucketIndex, char* k
     return NULL;
 }
 
-int rchkKVStorePut(KVStore* store, char* key, int keySize, void* value) {
+int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int valueSize) {
     uint64_t index = _rchkHash(key, keySize) % ARCHKE_BUCKETS;
 
     RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
     if (node != NULL) {
-        node->value = value;
+        RchkKVValue* found = node->value;
+        found->value = value;
+        found->size = valueSize;
         return 0;
     }
 
-    RchkBucketNode* new = malloc(sizeof(RchkBucketNode));
-    if (new == NULL) {
+    RchkKVValue* valueHolder = (RchkKVValue*) malloc(sizeof(RchkKVValue));
+    if (valueHolder == NULL) {
         return -1;
     }
-    
+    valueHolder->value = value;
+    valueHolder->size = valueSize;
+
+    RchkBucketNode* new = (RchkBucketNode*) malloc(sizeof(RchkBucketNode));
+    if (new == NULL) {
+        free(valueHolder);
+        return -1;
+    }
+    new->value = valueHolder;
     new->key = key;
     new->keySize = keySize;
-    new->value = value;
     new->next = store->buckets[index];
 
     store->buckets[index] = new;
@@ -93,7 +104,7 @@ int rchkKVStorePut(KVStore* store, char* key, int keySize, void* value) {
     return 0;    
 }
 
-void* rchkKVStoreGet(KVStore* store, char* key, int keySize) {
+RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
     uint64_t index = _rchkHash(key, keySize) % ARCHKE_BUCKETS;
 
     RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
@@ -104,7 +115,7 @@ void* rchkKVStoreGet(KVStore* store, char* key, int keySize) {
     return NULL;
 }
 
-void  rchkKVStoreFree(KVStore* store) {
+void  rchkKVStoreFree(RchkKVStore* store) {
     RchkBucketNode* current;
     RchkBucketNode* next;
 
@@ -114,6 +125,7 @@ void  rchkKVStoreFree(KVStore* store) {
         while (current != NULL)
         {
             next = current->next;
+            free(current->value);
             free(current);
             current = next;
         }

@@ -22,9 +22,13 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 	while (el != NULL) {
 		buffs[outputs].size = el->size;
 		buffs[outputs].buffer = el->bytes;
+		for(int i=0; i<el->size; i++) {
+			printf("%d ", el->bytes[i]);
+		}
 		outputs++;
 		el = el->next;
 	}
+	printf("\n");
 
 	int read = rchkSocketWritev(client->fd, buffs, outputs);
 	if (read < 0) {
@@ -52,6 +56,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 
 	// check if all the data has been sent
 	if (el == NULL) {
+		// printf("---------------------\n");
 		rchkClientReset(client);
 
 		// register read handler for client
@@ -103,9 +108,10 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	}
 
 	// run command
-	KVStore* commands = getCommands();
+	RchkKVStore* commands = getCommands();
 
-	void (*command) (RchkClient*) = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
+	RchkKVValue* cmd = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
+	void (*command) (RchkClient*) = cmd->value;
 
 	command(client);
 
@@ -157,6 +163,5 @@ void rchkHandleAcceptEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* e
 		rchkClientFree(client);
 		logError("Client event registration failed");
 	}
-
 }
 
