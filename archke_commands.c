@@ -29,6 +29,7 @@ void initCommands() {
     rchkKVStorePut(commands, "ECHO", strlen("ECHO"), echoCommand, -1);
     rchkKVStorePut(commands, "SET",  strlen("SET"),  setCommand, -1);
     rchkKVStorePut(commands, "GET",  strlen("GET"),  getCommand, -1);
+    rchkKVStorePut(commands, "DELETE",  strlen("DELETE"),  getCommand, -1);
 }
 
 RchkKVStore* getCommands() { return commands; }
@@ -85,5 +86,21 @@ void getCommand(RchkClient* client) {
     } else {
         rchkAppendToReply(client, ARCHKE_NULL, strlen(ARCHKE_NULL));
     }
+}
+
+/*
+    DELETE <key>
+    Response (simple string): +OK\r\n
+*/
+void deleteCommand(RchkClient* client) {
+    // 1.
+    RchkArrayElement* key = &client->in[1];
+
+    rchkKVStoreDelete(kvstore, key->bytes, key->size);
+
+    // 2.
+    rchkAppendToReply(client, ARCHKE_SIMPLE_STRING_PREFIX, strlen(ARCHKE_SIMPLE_STRING_PREFIX));
+    rchkAppendToReply(client, "OK", strlen("OK"));
+    rchkAppendToReply(client, ARCHKE_DELIMETER, strlen(ARCHKE_DELIMETER));
 }
 

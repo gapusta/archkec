@@ -18,6 +18,7 @@ typedef struct RchkBucketNode {
 
 struct RchkKVStore {
     RchkBucketNode** buckets;
+    rchkKVStoreHash* hash;
 };
 
 static uint64_t _rchkHash(const char* target, int targetSize) {
@@ -30,6 +31,10 @@ static uint64_t _rchkHash(const char* target, int targetSize) {
 }
 
 RchkKVStore* rchkKVStoreNew() {
+    return rchkKVStoreNew2(NULL);
+}
+
+RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash) {
     RchkKVStore* new = malloc(sizeof(RchkKVStore));
     if (new == NULL) {
         return NULL;
@@ -45,10 +50,11 @@ RchkKVStore* rchkKVStoreNew() {
         new->buckets[i] = NULL;
     }
 
+    new->hash = hash != NULL ? hash : _rchkHash;
+
     return new;
 }
 
-// TODO: SEGFAULT happens here
 RchkBucketNode* _rchkKVStoreSearch(RchkKVStore* store, uint64_t bucketIndex, char* key, int keySize) {
     RchkBucketNode* node = store->buckets[bucketIndex];
     
@@ -72,7 +78,7 @@ RchkBucketNode* _rchkKVStoreSearch(RchkKVStore* store, uint64_t bucketIndex, cha
 }
 
 int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int valueSize) {
-    uint64_t index = _rchkHash(key, keySize) % ARCHKE_BUCKETS;
+    uint64_t index = store->hash(key, keySize) % ARCHKE_BUCKETS;
 
     RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
     if (node != NULL) {
@@ -82,19 +88,19 @@ int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int 
         return 0;
     }
 
-    RchkKVValue* valueHolder = (RchkKVValue*) malloc(sizeof(RchkKVValue));
-    if (valueHolder == NULL) {
+    RchkKVValue* val = (RchkKVValue*) malloc(sizeof(RchkKVValue));
+    if (val == NULL) {
         return -1;
     }
-    valueHolder->value = value;
-    valueHolder->size = valueSize;
+    val->value = value;
+    val->size = valueSize;
 
     RchkBucketNode* new = (RchkBucketNode*) malloc(sizeof(RchkBucketNode));
     if (new == NULL) {
-        free(valueHolder);
+        free(val);
         return -1;
     }
-    new->value = valueHolder;
+    new->value = val;
     new->key = key;
     new->keySize = keySize;
     new->next = store->buckets[index];
@@ -105,7 +111,7 @@ int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int 
 }
 
 RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
-    uint64_t index = _rchkHash(key, keySize) % ARCHKE_BUCKETS;
+    uint64_t index = store->hash(key, keySize) % ARCHKE_BUCKETS;
 
     RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
     if (node != NULL) {
@@ -115,16 +121,62 @@ RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
     return NULL;
 }
 
+void rchkKVStoreDelete(RchkKVStore* store, char* key, int keySize) {
+    rchkKVStoreDelete2(store, key, keySize, NULL);
+}
+
+void rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
+    uint64_t index = store->hash(key, keySize) % ARCHKE_BUCKETS;
+
+    RchkBucketNode* first = store->buckets[index];
+    RchkBucketNode* current = first;
+    RchkBucketNode* prev = NULL;
+    
+    while(current != NULL) {
+        if (current->keySize != keySize) {
+            prev = current;
+            current = current->next;
+            continue;
+        }
+
+        for (int i=0; i<keySize; i++) {
+            if (current->key[i] != key[i]) {
+                prev = current;
+                current = current->next;
+                continue;
+            }
+        }
+
+        if (current == first) {
+            store->buckets[index] = current->next;
+        } else {
+            prev->next = current->next;
+        }
+
+        if (freeKeyValue != NULL) { 
+            freeKeyValue(current->key, current->keySize, current->value->value, current->value->size); 
+        }
+        free(current->value);
+        free(current);
+    }
+}
+
 void  rchkKVStoreFree(RchkKVStore* store) {
+    rchkKVStoreFree2(store, NULL);
+}
+
+void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue) {
     RchkBucketNode* current;
     RchkBucketNode* next;
 
     for (int i=0; i<ARCHKE_BUCKETS; i++) {
         current = store->buckets[i];
 
-        while (current != NULL)
-        {
+        while (current != NULL) {
             next = current->next;
+            if (freeKeyValue != NULL) {
+                freeKeyValue(current->key, current->keySize, current->value->value, current->value->size);
+            }
             free(current->value);
             free(current);
             current = next;

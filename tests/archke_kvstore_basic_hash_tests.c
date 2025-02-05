@@ -131,10 +131,53 @@ void test3() {
     printf("Test #3 passed\n");
 }
 
+void test4() {
+    RchkKVStore* store = rchkKVStoreNew();
+
+    int code = rchkKVStorePut(store, "my_key", strlen("my_key"), "my_value_2112", strlen("my_value_2112"));
+    if (code < 0) {
+        printf("Test 4 failed: 'put' returned error code: %d\n", code);
+        return;
+    }
+    
+    RchkKVValue* value = rchkKVStoreGet(store, "my_key", strlen("my_key"));
+    if (value == NULL) {
+        printf("Test 4 failed: 'get' returned 'not found' code\n");
+        return;
+    }
+
+    if (value->size != strlen("my_value_2112")) {
+        printf("Test 4 failed: unexpected size\n");
+        return;
+    }
+
+    if (strcmp(value->value, "my_value_2112") != 0) {
+        printf("Test 4 failed: unexpected value\n");
+        return;
+    }
+
+    rchkKVStoreDelete(store, "my_key", strlen("my_key"));
+
+    value = rchkKVStoreGet(store, "my_key", strlen("my_key"));
+    if (value != NULL) {
+        printf("Test 4 failed: delete failed\n");
+        return;
+    }
+
+    rchkKVStoreFree(store);
+
+    printf("Test #4 passed\n");
+}
+
+// static uint64_t rchkHashTestSameHash(const char* target, int targetSize) {
+//     return 0;
+// }
+
 int main(void) {
     test1();
     test2();
     test3();
+    test4();
     return 0;
 }
 
