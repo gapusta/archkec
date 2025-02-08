@@ -8,6 +8,7 @@
 #define ARCHKE_BINARY_STRING_PREFIX "$"
 #define ARCHKE_DELIMETER "\r\n"
 #define ARCHKE_NULL "_\r\n"
+#define ARCHKE_OK "+OK\r\n"
 
 // TODO: kvstore is not supposed to be here
 RchkKVStore* kvstore; // stores data
@@ -29,7 +30,7 @@ void initCommands() {
     rchkKVStorePut(commands, "ECHO", strlen("ECHO"), echoCommand, -1);
     rchkKVStorePut(commands, "SET",  strlen("SET"),  setCommand, -1);
     rchkKVStorePut(commands, "GET",  strlen("GET"),  getCommand, -1);
-    rchkKVStorePut(commands, "DELETE",  strlen("DELETE"),  getCommand, -1);
+    rchkKVStorePut(commands, "DEL",  strlen("DEL"),  getCommand, -1);
 }
 
 RchkKVStore* getCommands() { return commands; }
@@ -63,9 +64,7 @@ void setCommand(RchkClient* client) {
     }
 
     // 2.
-    rchkAppendToReply(client, ARCHKE_SIMPLE_STRING_PREFIX, strlen(ARCHKE_SIMPLE_STRING_PREFIX));
-    rchkAppendToReply(client, "OK", strlen("OK"));
-    rchkAppendToReply(client, ARCHKE_DELIMETER, strlen(ARCHKE_DELIMETER));
+    rchkAppendToReply(client, ARCHKE_OK, strlen(ARCHKE_OK));
 }
 
 /*
@@ -99,8 +98,6 @@ void deleteCommand(RchkClient* client) {
     rchkKVStoreDelete(kvstore, key->bytes, key->size);
 
     // 2.
-    rchkAppendToReply(client, ARCHKE_SIMPLE_STRING_PREFIX, strlen(ARCHKE_SIMPLE_STRING_PREFIX));
-    rchkAppendToReply(client, "OK", strlen("OK"));
-    rchkAppendToReply(client, ARCHKE_DELIMETER, strlen(ARCHKE_DELIMETER));
+    rchkAppendToReply(client, ARCHKE_OK, strlen(ARCHKE_OK));
 }
 

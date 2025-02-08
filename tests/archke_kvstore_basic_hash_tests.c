@@ -169,15 +169,79 @@ void test4() {
     printf("Test #4 passed\n");
 }
 
-// static uint64_t rchkHashTestSameHash(const char* target, int targetSize) {
-//     return 0;
-// }
+static uint64_t rchkHashTestSameHash(const char* target, int targetSize) {
+    return 0;
+}
+
+void test5() {
+    RchkKVStore* store = rchkKVStoreNew2(rchkHashTestSameHash);
+    
+    if (rchkKVStorePut(store, "k1", strlen("k1"), "v1", strlen("v1")) < 0) {
+        printf("Test 5 failed: 'put' #1 failed\n");
+        return;
+    }
+    if (rchkKVStorePut(store, "k2", strlen("k2"), "v2", strlen("v2")) < 0) {
+        printf("Test 5 failed: 'put' #2 failed\n");
+        return;
+    }
+    if (rchkKVStorePut(store, "k3", strlen("k3"), "v3", strlen("v3")) < 0) {
+        printf("Test 5 failed: 'put' #3 failed\n");
+        return;
+    }
+
+    RchkKVValue* value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
+    if (value1 == NULL) {
+        printf("Test 5 failed: 'get' #1 returned 'not found' code\n");
+        return;
+    }
+    if (value1->size != strlen("v1")) {
+        printf("Test 5, 'get' #1 failed: unexpected size\n");
+        return;
+    }
+    if (strcmp(value1->value, "v1") != 0) {
+        printf("Test 5, 'get' #1 failed: unexpected value\n");
+        return;
+    }
+
+    RchkKVValue* value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
+    if (value2 == NULL) {
+        printf("Test 5 failed: 'get' #2 returned 'not found' code\n");
+        return;
+    }
+    if (value2->size != strlen("v2")) {
+        printf("Test 5, 'get' #2 failed: unexpected size\n");
+        return;
+    }
+    if (strcmp(value2->value, "v2") != 0) {
+        printf("Test 5, 'get' #2 failed: unexpected value\n");
+        return;
+    }
+
+    RchkKVValue* value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
+    if (value3 == NULL) {
+        printf("Test 5 failed: 'get' #3 returned 'not found' code\n");
+        return;
+    }
+    if (value3->size != strlen("v3")) {
+        printf("Test 5, 'get' #3 failed: unexpected size\n");
+        return;
+    }
+    if (strcmp(value3->value, "v3") != 0) {
+        printf("Test 5, 'get' #3 failed: unexpected value\n");
+        return;
+    }
+
+    rchkKVStoreFree(store);
+
+    printf("Test #5 passed\n");
+}
 
 int main(void) {
     test1();
     test2();
     test3();
     test4();
+    test5();
     return 0;
 }
 

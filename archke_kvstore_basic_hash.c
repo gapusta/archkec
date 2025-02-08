@@ -58,6 +58,7 @@ RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash) {
 RchkBucketNode* _rchkKVStoreSearch(RchkKVStore* store, uint64_t bucketIndex, char* key, int keySize) {
     RchkBucketNode* node = store->buckets[bucketIndex];
     
+next:
     while(node != NULL) {
         if (node->keySize != keySize) {
             node = node->next;
@@ -67,7 +68,7 @@ RchkBucketNode* _rchkKVStoreSearch(RchkKVStore* store, uint64_t bucketIndex, cha
         for (int i=0; i<keySize; i++) {
             if (node->key[i] != key[i]) {
                 node = node->next;
-                continue;
+                goto next;
             }
         }
 
