@@ -132,7 +132,8 @@ void rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreF
     RchkBucketNode* first = store->buckets[index];
     RchkBucketNode* current = first;
     RchkBucketNode* prev = NULL;
-    
+
+next:
     while(current != NULL) {
         if (current->keySize != keySize) {
             prev = current;
@@ -144,7 +145,7 @@ void rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreF
             if (current->key[i] != key[i]) {
                 prev = current;
                 current = current->next;
-                continue;
+                goto next;
             }
         }
 
