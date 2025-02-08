@@ -18,7 +18,7 @@ RchkKVStore* getCommands();
 void echoCommand(RchkClient* client);
 void setCommand(RchkClient* client);
 void getCommand(RchkClient* client);
-void deleteCommand(RchkClient* client);
+void delCommand(RchkClient* client);
 
 #endif
 

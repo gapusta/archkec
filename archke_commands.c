@@ -30,7 +30,7 @@ void initCommands() {
     rchkKVStorePut(commands, "ECHO", strlen("ECHO"), echoCommand, -1);
     rchkKVStorePut(commands, "SET",  strlen("SET"),  setCommand, -1);
     rchkKVStorePut(commands, "GET",  strlen("GET"),  getCommand, -1);
-    rchkKVStorePut(commands, "DEL",  strlen("DEL"),  getCommand, -1);
+    rchkKVStorePut(commands, "DEL",  strlen("DEL"),  delCommand, -1);
 }
 
 RchkKVStore* getCommands() { return commands; }
@@ -91,13 +91,18 @@ void getCommand(RchkClient* client) {
     DELETE <key>
     Response (simple string): +OK\r\n
 */
-void deleteCommand(RchkClient* client) {
+void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
+    rchkFreeDuplicate(key, keySize);
+    rchkFreeDuplicate(value, valueSize);
+}
+
+void delCommand(RchkClient* client) {
     // 1.
     RchkArrayElement* key = &client->in[1];
 
-    rchkKVStoreDelete(kvstore, key->bytes, key->size);
+    rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
 
     // 2.
-    rchkAppendToReply(client, ARCHKE_OK, strlen(ARCHKE_OK));
+    rchkAppendToReply(client, ":1\r\n", strlen(":1\r\n"));
 }
 

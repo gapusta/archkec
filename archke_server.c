@@ -125,6 +125,10 @@ char* rchkDuplicate(const char* bytes, int size) {
     return memcpy(dup, bytes, size);
 }
 
+void rchkFreeDuplicate(char* bytes, int size) {
+	free(bytes);
+}
+
 int rchkAppendToReply(RchkClient* client, char* data, int dataSize) {
 	RchkResponseElement* element = (RchkResponseElement*) malloc(sizeof(RchkResponseElement));
 	if (element == NULL) {

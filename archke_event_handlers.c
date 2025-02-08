@@ -22,13 +22,14 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 	while (el != NULL) {
 		buffs[outputs].size = el->size;
 		buffs[outputs].buffer = el->bytes;
-		for(int i=0; i<el->size; i++) {
-			printf("%d ", el->bytes[i]);
-		}
+		// Great for debugging, might use later
+		// for(int i=0; i<el->size; i++) {
+		// 	printf("%d ", el->bytes[i]);
+		// }
 		outputs++;
 		el = el->next;
 	}
-	printf("\n");
+	// printf("\n");
 
 	int read = rchkSocketWritev(client->fd, buffs, outputs);
 	if (read < 0) {
