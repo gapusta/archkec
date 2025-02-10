@@ -87,15 +87,16 @@ void getCommand(RchkClient* client) {
     }
 }
 
-/*
-    DELETE <key>
-    Response (simple string): +OK\r\n
-*/
+
 void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
     rchkFreeDuplicate(key, keySize);
     rchkFreeDuplicate(value, valueSize);
 }
 
+/*
+    DELETE <key>
+    Response (simple string): +OK\r\n
+*/
 void delCommand(RchkClient* client) {
     // 1.
     RchkArrayElement* key = &client->in[1];
