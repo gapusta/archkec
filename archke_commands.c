@@ -55,8 +55,8 @@ void setCommand(RchkClient* client) {
     RchkArrayElement* key = &client->in[1];
     RchkArrayElement* value = &client->in[2];
 
-    void* keyDup = rchkDuplicate(key->bytes, key->size);
-    void* valueDup = rchkDuplicate(value->bytes, value->size);
+    char* keyDup = rchkDuplicate(key->bytes, key->size);
+    char* valueDup = rchkDuplicate(value->bytes, value->size);
 
     if (rchkKVStorePut(kvstore, keyDup, key->size, valueDup, value->size) < 0) {
         // TODO: write better error error handling
