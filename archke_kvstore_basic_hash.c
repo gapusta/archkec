@@ -122,11 +122,11 @@ RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
     return NULL;
 }
 
-void rchkKVStoreDelete(RchkKVStore* store, char* key, int keySize) {
-    rchkKVStoreDelete2(store, key, keySize, NULL);
+int rchkKVStoreDelete(RchkKVStore* store, char* key, int keySize) {
+    return rchkKVStoreDelete2(store, key, keySize, NULL);
 }
 
-void rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
+int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
     uint64_t index = store->hash(key, keySize) % ARCHKE_BUCKETS;
 
     RchkBucketNode* first = store->buckets[index];
@@ -160,7 +160,11 @@ next:
         }
         free(current->value);
         free(current);
+
+        return 1; // one element has been found and deleted
     }
+
+    return 0; // zero elements has been found and deleted
 }
 
 void  rchkKVStoreFree(RchkKVStore* store) {

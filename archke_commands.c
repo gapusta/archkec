@@ -95,15 +95,19 @@ void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
 
 /*
     DELETE <key>
-    Response (simple string): +OK\r\n
+    Response (Integer reply), the number of keys that were removed - :<integer>\r\n
 */
 void delCommand(RchkClient* client) {
     // 1.
     RchkArrayElement* key = &client->in[1];
 
-    rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
+    int deleted = rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
 
     // 2.
-    rchkAppendToReply(client, ":1\r\n", strlen(":1\r\n"));
+    if (deleted < 1) {
+        rchkAppendToReply(client, ":0\r\n", strlen(":0\r\n"));    
+    } else {
+        rchkAppendToReply(client, ":1\r\n", strlen(":1\r\n"));
+    } 
 }
 
