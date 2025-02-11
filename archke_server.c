@@ -95,6 +95,15 @@ static void rchkClearClientOutputList(RchkClient* client) {
 	client->unreadOffset = 0;
 }
 
+void rchkClientResetInputOnly(RchkClient* client, int readBufferProcessed) {
+	int left = client->readBufferOccupied - readBufferProcessed;
+		
+	client->readState = ARCHKE_BSAR_ARRAY;		
+	client->readBufferOccupied = left;
+	memmove(client->readBuffer, client->readBuffer + readBufferProcessed, left);
+	rchkClearClientInputList(client);
+}
+
 // Commands are expected to heap allocate every in.bytes
 // Commands are expected to heap allocate every element in 'out' linked list
 // or else free() will explode with error
@@ -170,10 +179,15 @@ int rchkAppendIntegerToReply(RchkClient* client, int data) {
 }
 
 int rchkProcessInputQuery(RchkClient* client) {
+	if (client->readBufferOccupied == 0) { 
+		return 0; 
+	}
+
     RchkArrayElement* currentElement = NULL;
 	int digit = 0;
+	int idx=0;
 
-	for (int idx=0; idx < client->readBufferOccupied; idx++) {
+	for (idx=0; idx < client->readBufferOccupied; idx++) {
 		char currentByte = client->readBuffer[idx];
 
 		switch(client->readState) {
@@ -259,16 +273,18 @@ int rchkProcessInputQuery(RchkClient* client) {
 						client->readState = ARCHKE_BSAR_ELEMENT;
 					} else {
 						client->readState = ARCHKE_BSAR_DONE;
+						goto read_done;
 					}
 				}
 
 				break;
 			case ARCHKE_BSAR_DONE: 
-				break;
+				goto read_done;
 		}
 	}
 
-	return 0;
+read_done:
+	return idx + 1; // the amount of elements processed
 }
 
 int rchkIsProcessInputQueryDone(RchkClient* client) {

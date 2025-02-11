@@ -250,10 +250,67 @@ void test4() {
 	printf("Test #4 passed\n");
 }
 
+void test5() {
+	char* input = "*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE*3\r\n$3\r\nSET$6\r\nMYKEY2$8\r\nMYVALUE2"; int inputSize = strlen(input);
+
+	RchkClient* client = rchkClientNew(-1);
+	if (client == NULL) {
+		perror("Test #5 failed: cannot create client instance");
+		exit(1);
+	}
+
+	client->readBufferOccupied = inputSize; memcpy(client->readBuffer, input, inputSize); 
+	
+	int processed = rchkProcessInputQuery(client);
+
+	if (!rchkIsProcessInputQueryDone(client)) {
+		printf("Test #5 failed: Incorrect client state: expected 'DONE'\n");
+		exit(-1);
+	}
+	if (processed != strlen("*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE")) {
+		printf("Test #5 failed: Incorrect amount of processed elements\n");
+		exit(-1);
+	}
+
+	RchkArrayElement* elements = client->in;
+	
+	if (elements == NULL) {
+        printf("Test #5 failed: NULL\n");
+		exit(-1);
+    }
+	
+	int elementsSize = client->inCount;
+
+	if (elementsSize != 3) {
+		printf("Test #5 failed: Incorrect elements amount\n");
+		exit(-1);
+	}
+
+	if (elements[0].size != 3 || strncmp(elements[0].bytes, "SET", 3) != 0) {
+		printf("Test #5 failed: Element #1 is incorrect\n");
+		exit(-1);
+	}
+
+	if (elements[1].size != 5 || strncmp(elements[1].bytes, "MYKEY", 5) != 0) {
+		printf("Test #5 failed: Element #2 is incorrect\n");
+		exit(-1);
+	}
+
+	if (elements[2].size != 7 || strncmp(elements[2].bytes, "MYVALUE", 7) != 0) {
+		printf("Test #5 failed: Element #3 is incorrect\n");
+		exit(-1);
+	} 
+
+	rchkClientFree(client);
+
+	printf("Test #5 passed\n");
+}
+
 int main(void) {
 	test1();
 	test2();
 	test3();
 	test4();
+	test5();
 }
 

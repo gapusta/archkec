@@ -102,19 +102,27 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		return;
 	}
 
-	rchkProcessInputQuery(client);
+	do {
+		int processed = rchkProcessInputQuery(client);
 
-	if (!rchkIsProcessInputQueryDone(client)) {
-		return;
-	}
+		if (!rchkIsProcessInputQueryDone(client)) {
+			return;
+		}
 
-	// run command
-	RchkKVStore* commands = getCommands();
+		// run command
+		RchkKVStore* commands = getCommands();
 
-	RchkKVValue* cmd = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
-	void (*command) (RchkClient*) = cmd->value;
+		RchkKVValue* cmd = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
+		void (*command) (RchkClient*) = cmd->value;
 
-	command(client);
+		command(client);
+
+		if (processed >= client->readBufferOccupied) {
+			break;
+		}
+
+		rchkClientResetInputOnly(client, processed);
+	} while (1);
 
 	// register write handler to send response back
 	client->unread = client->out;

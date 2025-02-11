@@ -38,6 +38,7 @@ typedef struct RchkClient {
 
 RchkClient* rchkClientNew(int fd);
 void rchkClientReset(RchkClient* client); // reseting client after each command
+void rchkClientResetInputOnly(RchkClient* client, int readBufferProcessed);
 void rchkClientFree(RchkClient* client);
 
 int rchkProcessInputQuery(RchkClient* client);
