@@ -104,9 +104,6 @@ void rchkClientResetInputOnly(RchkClient* client, int readBufferProcessed) {
 	rchkClearClientInputList(client);
 }
 
-// Commands are expected to heap allocate every in.bytes
-// Commands are expected to heap allocate every element in 'out' linked list
-// or else free() will explode with error
 void rchkClientReset(RchkClient* client) {
 	client->readState = ARCHKE_BSAR_ARRAY;
 	client->readBufferOccupied = 0;
