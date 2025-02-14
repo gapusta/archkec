@@ -1,11 +1,11 @@
 .PHONY: clean cleand
 
-hash_basic_tests: ../archke_kvstore_basic_hash.c archke_kvstore_basic_hash_tests.c
+hash_basic_tests: ../archke_tests.c ../archke_kvstore_basic_hash.c archke_kvstore_basic_hash_tests.c
 	gcc -Wall -I.. -c $^
 	gcc *.o -o exe
 	rm *.o
 
-hash_basic_tests_debug: ../archke_kvstore_basic_hash.c archke_kvstore_basic_hash_tests.c
+hash_basic_tests_debug: ../archke_tests.c ../archke_kvstore_basic_hash.c archke_kvstore_basic_hash_tests.c
 	gcc -Wall -I.. -c -g $^
 	gcc *.o -o exed
 	rm *.o

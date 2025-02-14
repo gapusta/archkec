@@ -1,82 +1,58 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "archke_tests.h"
 #include "archke_kvstore.h"
 
 void test1() {
+    rchkTestSetName("Test #1");
+
     RchkKVStore* store = rchkKVStoreNew();
+    rchkAssertNotNull(store, "store");
 
-    int code = rchkKVStorePut(store, "my_key", strlen("my_key"), "my_value_2112", strlen("my_value_2112"));
-    if (code < 0) {
-        printf("Test 1 failed: 'put' returned error code: %d\n", code);
-        return;
-    }
+    char* key = "key";
+    char* value = "value";
     
-    RchkKVValue* value = rchkKVStoreGet(store, "my_key", strlen("my_key"));
-    if (value == NULL) {
-        printf("Test 1 failed: 'get' returned 'not found' code\n");
-        return;
-    }
-
-    if (value->size != strlen("my_value_2112")) {
-        printf("Test 1 failed: unexpected size\n");
-        return;
-    }
-
-    if (strcmp(value->value, "my_value_2112") != 0) {
-        printf("Test 1 failed: unexpected value\n");
-        return;
-    }
+    // 1. put
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key, strlen(key), value, strlen(value)), "put");
+    
+    // 2. get
+    RchkKVValue* result = rchkKVStoreGet(store, key, strlen(key));
+    rchkAssertNotNull(result, "result");
+    rchkAssertEqualsInt(strlen(value), result->size, "result");
+    rchkAssertEqualsContent(value, result->value, strlen(value), "result");
 
     rchkKVStoreFree(store);
 
     printf("Test #1 passed\n");
 }
 
-
 void test2() {
+    rchkTestSetName("Test #2");
+
     RchkKVStore* store = rchkKVStoreNew();
+    rchkAssertNotNull(store, "store");
 
-    int code = rchkKVStorePut(store, "my_key_1", strlen("my_key_1"), "my_value_1", strlen("my_value_1"));
-    if (code < 0) {
-        printf("Test 2 failed: 'put' #1 returned error code: %d\n", code);
-        return;
-    }
+    char* key1 = "key";
+    char* value1 = "value";
 
-    code = rchkKVStorePut(store, "my_key_2", strlen("my_key_2"), "my_value_2", strlen("my_value_2"));
-    if (code < 0) {
-        printf("Test 2 failed: 'put' #1 returned error code: %d\n", code);
-        return;
-    }
-    
-    RchkKVValue* value1 = rchkKVStoreGet(store, "my_key_1", strlen("my_key_1"));
-    RchkKVValue* value2 = rchkKVStoreGet(store, "my_key_2", strlen("my_key_2"));
-    
-    if (value1 == NULL) {
-        printf("Test 2 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value1->size != strlen("my_value_1")) {
-        printf("Test 2, 'get' #1 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value1->value, "my_value_1") != 0) {
-        printf("Test 2, 'get' #1 failed: unexpected value\n");
-        return;
-    }
+    char* key2 = "key2";
+    char* value2 = "value2";
 
-    if (value2 == NULL) {
-        printf("Test 2 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value2->size != strlen("my_value_2")) {
-        printf("Test 2, 'get' #2 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value2->value, "my_value_2") != 0) {
-        printf("Test 2, 'get' #2 failed: unexpected value\n");
-        return;
-    }
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key1, strlen(key1), value1, strlen(value1)), "put1"); // put 1
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key2, strlen(key2), value2, strlen(value2)), "put2"); // put 2
+
+    // get 1
+    RchkKVValue* result1 = rchkKVStoreGet(store, key1, strlen(key1)); 
+    rchkAssertNotNull(result1, "result1");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1");
+
+    // get 2
+    RchkKVValue* result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(result2, "result2");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2");
 
     rchkKVStoreFree(store);
 
@@ -84,47 +60,34 @@ void test2() {
 }
 
 void test3() {
+    rchkTestSetName("Test #3");
+
     RchkKVStore* store = rchkKVStoreNew();
+    rchkAssertNotNull(store, "store");
 
-    int code = rchkKVStorePut(store, "my_key", strlen("my_key"), "my_value_2112", strlen("my_value_2112"));
-    if (code < 0) {
-        printf("Test 3 failed: 'put' #1 returned error code: %d\n", code);
-        return;
-    }
+    char* key1 = "key";
+    char* value1 = "value";
 
-    RchkKVValue* value = rchkKVStoreGet(store, "my_key", strlen("my_key"));
-    if (value == NULL) {
-        printf("Test 3 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value->size != strlen("my_value_2112")) {
-        printf("Test 3 failed: 'get' #1: unexpected size\n");
-        return;
-    }
-    if (strcmp(value->value, "my_value_2112") != 0) {
-        printf("Test 3 failed: 'get' #1: unexpected value\n");
-        return;
-    }
+    char* key2 = "key2";
+    char* value2 = "value2";
 
-    code = rchkKVStorePut(store, "my_key", strlen("my_key"), "my_next_value_2112", strlen("my_next_value_2112"));
-    if (code < 0) {
-        printf("Test 3 failed: 'put' #2 returned error code: %d\n", code);
-        return;
-    }
-    
-    value = rchkKVStoreGet(store, "my_key", strlen("my_key"));
-    if (value == NULL) {
-        printf("Test 3 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value->size != strlen("my_next_value_2112")) {
-        printf("Test 3 failed: 'get' #2: unexpected size\n");
-        return;
-    }
-    if (strcmp(value->value, "my_next_value_2112") != 0) {
-        printf("Test 3 failed: 'get' #2: unexpected value\n");
-        return;
-    }
+    // put 1
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key1, strlen(key1), value1, strlen(value1)), "put1");
+
+    // get 1
+    RchkKVValue* result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNotNull(result1, "result1");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1");
+
+    // put 2
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key2, strlen(key2), value2, strlen(value2)), "put2");
+
+    // get 2
+    RchkKVValue* result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(result2, "result2");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2");
 
     rchkKVStoreFree(store);
 
@@ -132,37 +95,26 @@ void test3() {
 }
 
 void test4() {
+    rchkTestSetName("Test #4");
+
     RchkKVStore* store = rchkKVStoreNew();
+    rchkAssertNotNull(store, "store");
 
-    int code = rchkKVStorePut(store, "my_key", strlen("my_key"), "my_value_2112", strlen("my_value_2112"));
-    if (code < 0) {
-        printf("Test 4 failed: 'put' returned error code: %d\n", code);
-        return;
-    }
+    char* key = "key";
+    char* value = "value";
     
-    RchkKVValue* value = rchkKVStoreGet(store, "my_key", strlen("my_key"));
-    if (value == NULL) {
-        printf("Test 4 failed: 'get' returned 'not found' code\n");
-        return;
-    }
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key, strlen(key), value, strlen(value)), "put");
+    
+    RchkKVValue* resultBefore = rchkKVStoreGet(store, key, strlen(key));
+    rchkAssertNotNull(resultBefore, "resultBefore");
+    rchkAssertEqualsInt(strlen(value), resultBefore->size, "resultBefore");
+    rchkAssertEqualsContent(value, resultBefore->value, strlen(value), "resultBefore");
 
-    if (value->size != strlen("my_value_2112")) {
-        printf("Test 4 failed: unexpected size\n");
-        return;
-    }
+    // delete
+    rchkKVStoreDelete(store, key, strlen(key));
 
-    if (strcmp(value->value, "my_value_2112") != 0) {
-        printf("Test 4 failed: unexpected value\n");
-        return;
-    }
-
-    rchkKVStoreDelete(store, "my_key", strlen("my_key"));
-
-    value = rchkKVStoreGet(store, "my_key", strlen("my_key"));
-    if (value != NULL) {
-        printf("Test 4 failed: delete failed\n");
-        return;
-    }
+    RchkKVValue* resultAfter = rchkKVStoreGet(store, key, strlen(key));
+    rchkAssertNull(resultAfter, "resultAfter");
 
     rchkKVStoreFree(store);
 
@@ -174,62 +126,38 @@ static uint64_t rchkHashTestSameHash(const char* target, int targetSize) {
 }
 
 void test5() {
+    rchkTestSetName("Test #5");
+
     RchkKVStore* store = rchkKVStoreNew2(rchkHashTestSameHash);
+    rchkAssertNotNull(store, "store");
     
-    if (rchkKVStorePut(store, "k1", strlen("k1"), "v1", strlen("v1")) < 0) {
-        printf("Test 5 failed: 'put' #1 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k2", strlen("k2"), "v2", strlen("v2")) < 0) {
-        printf("Test 5 failed: 'put' #2 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k3", strlen("k3"), "v3", strlen("v3")) < 0) {
-        printf("Test 5 failed: 'put' #3 failed\n");
-        return;
-    }
+    char* key1 = "k1";
+    char* value1 = "v1";
 
-    RchkKVValue* value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
-    if (value1 == NULL) {
-        printf("Test 5 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value1->size != strlen("v1")) {
-        printf("Test 5, 'get' #1 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value1->value, "v1") != 0) {
-        printf("Test 5, 'get' #1 failed: unexpected value\n");
-        return;
-    }
+    char* key2 = "k2";
+    char* value2 = "v2";
 
-    RchkKVValue* value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
-    if (value2 == NULL) {
-        printf("Test 5 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value2->size != strlen("v2")) {
-        printf("Test 5, 'get' #2 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value2->value, "v2") != 0) {
-        printf("Test 5, 'get' #2 failed: unexpected value\n");
-        return;
-    }
+    char* key3 = "k3";
+    char* value3 = "v3";
 
-    RchkKVValue* value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
-    if (value3 == NULL) {
-        printf("Test 5 failed: 'get' #3 returned 'not found' code\n");
-        return;
-    }
-    if (value3->size != strlen("v3")) {
-        printf("Test 5, 'get' #3 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value3->value, "v3") != 0) {
-        printf("Test 5, 'get' #3 failed: unexpected value\n");
-        return;
-    }
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key1, strlen(key1), value1, strlen(value1)), "put1");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key2, strlen(key2), value2, strlen(value2)), "put2");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key3, strlen(key3), value3, strlen(value3)), "put3");
+
+    RchkKVValue* result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNotNull(result1, "result1");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1");
+
+    RchkKVValue* result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(result2, "result2");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2");
+
+    RchkKVValue* result3 = rchkKVStoreGet(store, key3, strlen(key3));
+    rchkAssertNotNull(result3, "result3");
+    rchkAssertEqualsInt(strlen(value3), result3->size, "result3");
+    rchkAssertEqualsContent(value3, result3->value, strlen(value3), "result3");
 
     rchkKVStoreFree(store);
 
@@ -237,98 +165,55 @@ void test5() {
 }
 
 void test6() {
+    rchkTestSetName("Test #6");
+
     RchkKVStore* store = rchkKVStoreNew2(rchkHashTestSameHash);
-    
-    if (rchkKVStorePut(store, "k1", strlen("k1"), "v1", strlen("v1")) < 0) {
-        printf("Test 6 failed: 'put' #1 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k2", strlen("k2"), "v2", strlen("v2")) < 0) {
-        printf("Test 6 failed: 'put' #2 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k3", strlen("k3"), "v3", strlen("v3")) < 0) {
-        printf("Test 6 failed: 'put' #3 failed\n");
-        return;
-    }
+    rchkAssertNotNull(store, "store");
 
-    RchkKVValue* value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
-    if (value1 == NULL) {
-        printf("Test 6 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value1->size != strlen("v1")) {
-        printf("Test 6, 'get' #1 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value1->value, "v1") != 0) {
-        printf("Test 6, 'get' #1 failed: unexpected value\n");
-        return;
-    }
+    char* key1 = "k1";
+    char* value1 = "v1";
 
-    RchkKVValue* value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
-    if (value2 == NULL) {
-        printf("Test 6 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value2->size != strlen("v2")) {
-        printf("Test 6, 'get' #2 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value2->value, "v2") != 0) {
-        printf("Test 6, 'get' #2 failed: unexpected value\n");
-        return;
-    }
+    char* key2 = "k2";
+    char* value2 = "v2";
 
-    RchkKVValue* value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
-    if (value3 == NULL) {
-        printf("Test 6 failed: 'get' #3 returned 'not found' code\n");
-        return;
-    }
-    if (value3->size != strlen("v3")) {
-        printf("Test 6, 'get' #3 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value3->value, "v3") != 0) {
-        printf("Test 6, 'get' #3 failed: unexpected value\n");
-        return;
-    }
+    char* key3 = "k3";
+    char* value3 = "v3";
 
-    rchkKVStoreDelete(store, "k2", strlen("k2"));
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key1, strlen(key1), value1, strlen(value1)), "put1");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key2, strlen(key2), value2, strlen(value2)), "put2");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key3, strlen(key3), value3, strlen(value3)), "put3");
 
-    value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
-    if (value2 != NULL) {
-        printf("Test 6 failed: 'delete' failed\n");
-        return;
-    }
+    RchkKVValue* result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNotNull(result1, "result1");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1");
 
-    value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
-    if (value1 == NULL) {
-        printf("Test 6 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value1->size != strlen("v1")) {
-        printf("Test 6, 'get' #1 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value1->value, "v1") != 0) {
-        printf("Test 6, 'get' #1 failed: unexpected value\n");
-        return;
-    }
-    
-    value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
-    if (value3 == NULL) {
-        printf("Test 6 failed: 'get' #3 returned 'not found' code\n");
-        return;
-    }
-    if (value3->size != strlen("v3")) {
-        printf("Test 6, 'get' #3 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value3->value, "v3") != 0) {
-        printf("Test 6, 'get' #3 failed: unexpected value\n");
-        return;
-    }
+    RchkKVValue* result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(result2, "result2");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2");
+
+    RchkKVValue* result3 = rchkKVStoreGet(store, key3, strlen(key3));
+    rchkAssertNotNull(result3, "result3");
+    rchkAssertEqualsInt(strlen(value3), result3->size, "result3");
+    rchkAssertEqualsContent(value3, result3->value, strlen(value3), "result3");
+
+    // delete
+    rchkKVStoreDelete(store, key2, strlen(key2));
+
+    result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNotNull(result1, "result1 after");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1 after");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1 after");
+
+    // check delete
+    result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNull(result2, "result2 after");
+
+    result3 = rchkKVStoreGet(store, key3, strlen(key3));
+    rchkAssertNotNull(result3, "result3 after");
+    rchkAssertEqualsInt(strlen(value3), result3->size, "result3 after");
+    rchkAssertEqualsContent(value3, result3->value, strlen(value3), "result3 after");
 
     rchkKVStoreFree(store);
 
@@ -336,98 +221,55 @@ void test6() {
 }
 
 void test7() {
+    rchkTestSetName("Test #7");
+
     RchkKVStore* store = rchkKVStoreNew2(rchkHashTestSameHash);
-    
-    if (rchkKVStorePut(store, "k1", strlen("k1"), "v1", strlen("v1")) < 0) {
-        printf("Test 7 failed: 'put' #1 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k2", strlen("k2"), "v2", strlen("v2")) < 0) {
-        printf("Test 7 failed: 'put' #2 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k3", strlen("k3"), "v3", strlen("v3")) < 0) {
-        printf("Test 7 failed: 'put' #3 failed\n");
-        return;
-    }
+    rchkAssertNotNull(store, "store");
 
-    RchkKVValue* value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
-    if (value1 == NULL) {
-        printf("Test 7 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value1->size != strlen("v1")) {
-        printf("Test 7, 'get' #1 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value1->value, "v1") != 0) {
-        printf("Test 7, 'get' #1 failed: unexpected value\n");
-        return;
-    }
+    char* key1 = "k1";
+    char* value1 = "v1";
 
-    RchkKVValue* value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
-    if (value2 == NULL) {
-        printf("Test 7 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value2->size != strlen("v2")) {
-        printf("Test 7, 'get' #2 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value2->value, "v2") != 0) {
-        printf("Test 7, 'get' #2 failed: unexpected value\n");
-        return;
-    }
+    char* key2 = "k2";
+    char* value2 = "v2";
 
-    RchkKVValue* value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
-    if (value3 == NULL) {
-        printf("Test 7 failed: 'get' #3 returned 'not found' code\n");
-        return;
-    }
-    if (value3->size != strlen("v3")) {
-        printf("Test 7, 'get' #3 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value3->value, "v3") != 0) {
-        printf("Test 7, 'get' #3 failed: unexpected value\n");
-        return;
-    }
+    char* key3 = "k3";
+    char* value3 = "v3";
 
-    rchkKVStoreDelete(store, "k1", strlen("k1"));
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key1, strlen(key1), value1, strlen(value1)), "put1");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key2, strlen(key2), value2, strlen(value2)), "put2");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key3, strlen(key3), value3, strlen(value3)), "put3");
 
-    value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
-    if (value1 != NULL) {
-        printf("Test 7 failed: 'delete' failed\n");
-        return;
-    }
+    RchkKVValue* result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNotNull(result1, "result1");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1");
 
-    value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
-    if (value2 == NULL) {
-        printf("Test 7 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value2->size != strlen("v2")) {
-        printf("Test 7, 'get' #2 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value2->value, "v2") != 0) {
-        printf("Test 7, 'get' #2 failed: unexpected value\n");
-        return;
-    }
+    RchkKVValue* result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(result2, "result2");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2");
 
-    value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
-    if (value3 == NULL) {
-        printf("Test 7 failed: 'get' #3 returned 'not found' code\n");
-        return;
-    }
-    if (value3->size != strlen("v3")) {
-        printf("Test 7, 'get' #3 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value3->value, "v3") != 0) {
-        printf("Test 7, 'get' #3 failed: unexpected value\n");
-        return;
-    }
+    RchkKVValue* result3 = rchkKVStoreGet(store, key3, strlen(key3));
+    rchkAssertNotNull(result3, "result3");
+    rchkAssertEqualsInt(strlen(value3), result3->size, "result3");
+    rchkAssertEqualsContent(value3, result3->value, strlen(value3), "result3");
+
+    // delete
+    rchkKVStoreDelete(store, key1, strlen(key1));
+
+    // check delete
+    result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNull(result1, "result1 after");
+
+    result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(value2, "result2 after");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2 after");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2 after");
+
+    result3 = rchkKVStoreGet(store, key3, strlen(key3));
+    rchkAssertNotNull(result3, "result3 after");
+    rchkAssertEqualsInt(strlen(value3), result3->size, "result3 after");
+    rchkAssertEqualsContent(value3, result3->value, strlen(value3), "result3 after");
 
     rchkKVStoreFree(store);
 
@@ -435,98 +277,55 @@ void test7() {
 }
 
 void test8() {
+    rchkTestSetName("Test #8");
+
     RchkKVStore* store = rchkKVStoreNew2(rchkHashTestSameHash);
+    rchkAssertNotNull(store, "store");
+
+    char* key1 = "k1";
+    char* value1 = "v1";
+
+    char* key2 = "k2";
+    char* value2 = "v2";
+
+    char* key3 = "k3";
+    char* value3 = "v3";
+
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key1, strlen(key1), value1, strlen(value1)), "put1");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key2, strlen(key2), value2, strlen(value2)), "put2");
+    rchkAssertEqualsInt(0, rchkKVStorePut(store, key3, strlen(key3), value3, strlen(value3)), "put3");
+
+    RchkKVValue* result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNotNull(result1, "result1");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1");
+
+    RchkKVValue* result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(result2, "result2");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2");
+
+    RchkKVValue* result3 = rchkKVStoreGet(store, key3, strlen(key3));
+    rchkAssertNotNull(result3, "result3");
+    rchkAssertEqualsInt(strlen(value3), result3->size, "result3");
+    rchkAssertEqualsContent(value3, result3->value, strlen(value3), "result3");
+
+    // delete
+    rchkKVStoreDelete(store, key3, strlen(key3));
     
-    if (rchkKVStorePut(store, "k1", strlen("k1"), "v1", strlen("v1")) < 0) {
-        printf("Test 8 failed: 'put' #1 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k2", strlen("k2"), "v2", strlen("v2")) < 0) {
-        printf("Test 8 failed: 'put' #2 failed\n");
-        return;
-    }
-    if (rchkKVStorePut(store, "k3", strlen("k3"), "v3", strlen("v3")) < 0) {
-        printf("Test 8 failed: 'put' #3 failed\n");
-        return;
-    }
+    result1 = rchkKVStoreGet(store, key1, strlen(key1));
+    rchkAssertNotNull(value1, "result1 after");
+    rchkAssertEqualsInt(strlen(value1), result1->size, "result1 after");
+    rchkAssertEqualsContent(value1, result1->value, strlen(value1), "result1 after");
 
-    RchkKVValue* value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
-    if (value1 == NULL) {
-        printf("Test 8 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value1->size != strlen("v1")) {
-        printf("Test 8, 'get' #1 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value1->value, "v1") != 0) {
-        printf("Test 8, 'get' #1 failed: unexpected value\n");
-        return;
-    }
+    result2 = rchkKVStoreGet(store, key2, strlen(key2));
+    rchkAssertNotNull(value2, "result2 after");
+    rchkAssertEqualsInt(strlen(value2), result2->size, "result2 after");
+    rchkAssertEqualsContent(value2, result2->value, strlen(value2), "result2 after");
 
-    RchkKVValue* value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
-    if (value2 == NULL) {
-        printf("Test 8 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value2->size != strlen("v2")) {
-        printf("Test 8, 'get' #2 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value2->value, "v2") != 0) {
-        printf("Test 8, 'get' #2 failed: unexpected value\n");
-        return;
-    }
-
-    RchkKVValue* value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
-    if (value3 == NULL) {
-        printf("Test 8 failed: 'get' #3 returned 'not found' code\n");
-        return;
-    }
-    if (value3->size != strlen("v3")) {
-        printf("Test 8, 'get' #3 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value3->value, "v3") != 0) {
-        printf("Test 8, 'get' #3 failed: unexpected value\n");
-        return;
-    }
-
-    rchkKVStoreDelete(store, "k3", strlen("k3"));
-
-    value3 = rchkKVStoreGet(store, "k3", strlen("k3"));
-    if (value3 != NULL) {
-        printf("Test 8 failed: 'delete' failed\n");
-        return;
-    }
-
-    value1 = rchkKVStoreGet(store, "k1", strlen("k1"));
-    if (value1 == NULL) {
-        printf("Test 8 failed: 'get' #1 returned 'not found' code\n");
-        return;
-    }
-    if (value1->size != strlen("v1")) {
-        printf("Test 8, 'get' #1 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value1->value, "v1") != 0) {
-        printf("Test 8, 'get' #1 failed: unexpected value\n");
-        return;
-    }
-
-    value2 = rchkKVStoreGet(store, "k2", strlen("k2"));
-    if (value2 == NULL) {
-        printf("Test 8 failed: 'get' #2 returned 'not found' code\n");
-        return;
-    }
-    if (value2->size != strlen("v2")) {
-        printf("Test 8, 'get' #2 failed: unexpected size\n");
-        return;
-    }
-    if (strcmp(value2->value, "v2") != 0) {
-        printf("Test 8, 'get' #2 failed: unexpected value\n");
-        return;
-    }
+    // check delete
+    result3 = rchkKVStoreGet(store, key3, strlen(key3));
+    rchkAssertNull(result3, "result3 after");
 
     rchkKVStoreFree(store);
 
