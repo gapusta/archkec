@@ -1,54 +1,39 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "archke_tests.h"
 #include "archke_server.h"
 
 #define MEMORY_ARENA_SIZE 1024
 
 void test1() {
+	rchkTestSetName("Test #1");
+
 	char* input = "*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE"; int inputSize = strlen(input);
 
 	RchkClient* client = rchkClientNew(-1);
-	if (client == NULL) {
-		perror("Test #1 failed: cannot create client instance");
-		exit(1);
-	}
+	rchkAssertNotNull(client, "client null check");
 
-	client->readBufferOccupied = inputSize; memcpy(client->readBuffer, input, inputSize); rchkProcessInputQuery(client);
+	client->readBufferOccupied = inputSize; 
+	memcpy(client->readBuffer, input, inputSize); 
+	rchkProcessInputQuery(client);
 
-	if (!rchkIsProcessInputQueryDone(client)) {
-		printf("Test #1 failed: Incorrect client state: expected 'DONE'\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
 
 	RchkArrayElement* elements = client->in;
-	
-	if (elements == NULL) {
-        printf("Test #1 failed: NULL\n");
-		exit(-1);
-    }
+
+	rchkAssertNotNull(elements, "elements null check");
 	
 	int elementsSize = client->inCount;
 
-	if (elementsSize != 3) {
-		printf("Test #1 failed: Incorrect elements amount\n");
-		exit(-1);
-	}
-
-	if (elements[0].size != 3 || strncmp(elements[0].bytes, "SET", 3) != 0) {
-		printf("Test #1 failed: Element #1 is incorrect\n");
-		exit(-1);
-	}
-
-	if (elements[1].size != 5 || strncmp(elements[1].bytes, "MYKEY", 5) != 0) {
-		printf("Test #1 failed: Element #2 is incorrect\n");
-		exit(-1);
-	}
-
-	if (elements[2].size != 7 || strncmp(elements[2].bytes, "MYVALUE", 7) != 0) {
-		printf("Test #1 failed: Element #3 is incorrect\n");
-		exit(-1);
-	} 
+	rchkAssertEqualsInt(3, elementsSize, "elements size check");
+	rchkAssertEqualsInt(3, elements[0].size, "element #0 size check");
+	rchkAssertEqualsInt(5, elements[1].size, "element #1 size check");
+	rchkAssertEqualsInt(7, elements[2].size, "element #2 size check");
+	
+	rchkAssertEqualsContent("SET", elements[0].bytes, 3, "element #0 value check");
+	rchkAssertEqualsContent("MYKEY", elements[1].bytes, 5, "element #1 value check");
+	rchkAssertEqualsContent("MYVALUE", elements[2].bytes, 7, "element #2 value check");
 
 	rchkClientFree(client);
 	
@@ -56,6 +41,8 @@ void test1() {
 }
 
 void test2() {
+	rchkTestSetName("Test #2");
+
 	// [*][1][\r][\n][$3][\r\n][S][ET]
 	char* input1 = "*"; int inputSize1 = strlen(input1);
 	char* input2 = "1"; int inputSize2 = strlen(input2);
@@ -67,10 +54,7 @@ void test2() {
 	char* input8 = "ET"; int inputSize8 = strlen(input8);
 
 	RchkClient* client = rchkClientNew(-1);
-	if (client == NULL) {
-		perror("Test #2 failed: cannot create client instance");
-		exit(1);
-	}
+	rchkAssertNotNull(client, "client null check");
 
 	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
 	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
@@ -81,29 +65,17 @@ void test2() {
 	client->readBufferOccupied = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
 	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
 
-	if (!rchkIsProcessInputQueryDone(client)) {
-		printf("Test #2 failed: Incorrect client state: expected 'DONE'\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
 
 	RchkArrayElement* elements = client->in;
 	
-	if (elements == NULL) {
-        printf("Test #2 failed: NULL\n");
-		exit(-1);
-    }
+	rchkAssertNotNull(elements, "elements null check");
 	
 	int elementsSize = client->inCount;
 
-	if (elementsSize != 1) {
-		printf("Test #2 failed: Incorrect elements amount\n");
-		exit(-1);
-	}
-
-	if (elements[0].size != 3 || strncmp(elements[0].bytes, "SET", 3) != 0) {
-		printf("Test #2 failed: Element #1 is incorrect\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(1, elementsSize, "elements size check");
+	rchkAssertEqualsInt(3, elements[0].size, "element #0 size check");
+	rchkAssertEqualsContent("SET", elements[0].bytes, 3, "element #0 value check");
 
 	rchkClientFree(client);
 	
@@ -111,6 +83,8 @@ void test2() {
 }
 
 void test3() {
+	rchkTestSetName("Test #3");
+
 	// [*][1][\r][\n][$1][1][\r\n][DIST][INGUISH]
 	char* input1 = "*"; int inputSize1 = strlen(input1);
 	char* input2 = "1"; int inputSize2 = strlen(input2);
@@ -123,10 +97,7 @@ void test3() {
 	char* input9 = "INGUISH"; int inputSize9 = strlen(input9);
 
 	RchkClient* client = rchkClientNew(-1);
-	if (client == NULL) {
-		perror("Test #3 failed: cannot create client instance");
-		exit(1);
-	}
+	rchkAssertNotNull(client, "client null check");
 
 	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
 	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
@@ -138,29 +109,17 @@ void test3() {
 	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
 	client->readBufferOccupied = inputSize9; memcpy(client->readBuffer, input9, inputSize9); rchkProcessInputQuery(client);
 
-	if (!rchkIsProcessInputQueryDone(client)) {
-		printf("Test #3 failed: Incorrect client state: expected 'DONE'\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
 
 	RchkArrayElement* elements = client->in;
 	
-	if (elements == NULL) {
-        printf("Test #3 failed: NULL\n");
-		exit(-1);
-    }
+	rchkAssertNotNull(elements, "elements null check");
 	
 	int elementsSize = client->inCount;
 
-	if (elementsSize != 1) {
-		printf("Test #3 failed: Incorrect elements amount\n");
-		exit(-1);
-	}
-
-	if (elements[0].size != 11 || strncmp(elements[0].bytes, "DISTINGUISH", 11) != 0) {
-		printf("Test #3 failed: Element #1 is incorrect\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(1, elementsSize, "elements size check");
+	rchkAssertEqualsInt(11, elements[0].size, "element #0 size check");
+	rchkAssertEqualsContent("DISTINGUISH", elements[0].bytes, 11, "element #0 value check");
 
 	rchkClientFree(client);
 	
@@ -168,6 +127,8 @@ void test3() {
 }
 
 void test4() {
+	rchkTestSetName("Test #4");
+
 	// [*][3][\r][\n][$1][1][\r\n][DIST][INGUISH][$][5\r\n][MY][KEY][$7\r][\n][MYVALU][E]
 	char* input1 = "*"; int inputSize1 = strlen(input1);
 	char* input2 = "3"; int inputSize2 = strlen(input2);
@@ -188,10 +149,7 @@ void test4() {
 	char* input17 = "E"; int inputSize17 = strlen(input17);
 
 	RchkClient* client = rchkClientNew(-1);
-	if (client == NULL) {
-		perror("Test #4 failed: cannot create client instance");
-		exit(1);
-	}
+	rchkAssertNotNull(client, "client null check");
 
 	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
 	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
@@ -211,39 +169,22 @@ void test4() {
 	client->readBufferOccupied = inputSize16; memcpy(client->readBuffer, input16, inputSize16); rchkProcessInputQuery(client);
 	client->readBufferOccupied = inputSize17; memcpy(client->readBuffer, input17, inputSize17); rchkProcessInputQuery(client);
 	
-	if (!rchkIsProcessInputQueryDone(client)) {
-		printf("Test #4 failed: Incorrect client state: expected 'DONE'\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
 
 	RchkArrayElement* elements = client->in;
 	
-	if (elements == NULL) {
-        printf("Test #4 failed: NULL\n");
-		exit(-1);
-    }
+	rchkAssertNotNull(elements, "elements null check");
 	
 	int elementsSize = client->inCount;
 
-	if (elementsSize != 3) {
-		printf("Test #4 failed: Incorrect elements amount\n");
-		exit(-1);
-	}
-
-	if (elements[0].size != 11 || strncmp(elements[0].bytes, "DISTINGUISH", 11) != 0) {
-		printf("Test #4 failed: Element #1 is incorrect\n");
-		exit(-1);
-	}
-
-	if (elements[1].size != 5 || strncmp(elements[1].bytes, "MYKEY", 5) != 0) {
-		printf("Test #4 failed: Element #2 is incorrect\n");
-		exit(-1);
-	}
-
-	if (elements[2].size != 7 || strncmp(elements[2].bytes, "MYVALUE", 7) != 0) {
-		printf("Test #4 failed: Element #3 is incorrect\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(3, elementsSize, "elements size check");
+	rchkAssertEqualsInt(11, elements[0].size, "element #0 size check");
+	rchkAssertEqualsInt(5, elements[1].size, "element #1 size check");
+	rchkAssertEqualsInt(7, elements[2].size, "element #2 size check");
+	
+	rchkAssertEqualsContent("DISTINGUISH", elements[0].bytes, 11, "element #0 value check");
+	rchkAssertEqualsContent("MYKEY", elements[1].bytes, 5, "element #1 value check");
+	rchkAssertEqualsContent("MYVALUE", elements[2].bytes, 7, "element #2 value check");
 
 	rchkClientFree(client);
 	
@@ -251,55 +192,37 @@ void test4() {
 }
 
 void test5() {
-	char* input = "*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE*3\r\n$3\r\nSET$6\r\nMYKEY2$8\r\nMYVALUE2"; int inputSize = strlen(input);
+	rchkTestSetName("Test #5");
+
+	char* input = "*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE*3\r\n$3\r\nSET$6\r\nMYKEY2$8\r\nMYVALUE2"; 
+	int inputSize = strlen(input);
 
 	RchkClient* client = rchkClientNew(-1);
-	if (client == NULL) {
-		perror("Test #5 failed: cannot create client instance");
-		exit(1);
-	}
+	rchkAssertNotNull(client, "client null check");
 
-	client->readBufferOccupied = inputSize; memcpy(client->readBuffer, input, inputSize); 
+	client->readBufferOccupied = inputSize; 
+	memcpy(client->readBuffer, input, inputSize); 
 	
 	int processed = rchkProcessInputQuery(client);
 
-	if (!rchkIsProcessInputQueryDone(client)) {
-		printf("Test #5 failed: Incorrect client state: expected 'DONE'\n");
-		exit(-1);
-	}
-	if (processed != strlen("*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE")) {
-		printf("Test #5 failed: Incorrect amount of processed elements\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
+
+	rchkAssertEqualsInt(strlen("*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE"), processed, "processed bytes amount check");
 
 	RchkArrayElement* elements = client->in;
-	
-	if (elements == NULL) {
-        printf("Test #5 failed: NULL\n");
-		exit(-1);
-    }
+
+	rchkAssertNotNull(elements, "elements null check");
 	
 	int elementsSize = client->inCount;
 
-	if (elementsSize != 3) {
-		printf("Test #5 failed: Incorrect elements amount\n");
-		exit(-1);
-	}
+	rchkAssertEqualsInt(3, elementsSize, "elements size check");
+	rchkAssertEqualsInt(3, elements[0].size, "element #0 size check");
+	rchkAssertEqualsInt(5, elements[1].size, "element #1 size check");
+	rchkAssertEqualsInt(7, elements[2].size, "element #2 size check");
 
-	if (elements[0].size != 3 || strncmp(elements[0].bytes, "SET", 3) != 0) {
-		printf("Test #5 failed: Element #1 is incorrect\n");
-		exit(-1);
-	}
-
-	if (elements[1].size != 5 || strncmp(elements[1].bytes, "MYKEY", 5) != 0) {
-		printf("Test #5 failed: Element #2 is incorrect\n");
-		exit(-1);
-	}
-
-	if (elements[2].size != 7 || strncmp(elements[2].bytes, "MYVALUE", 7) != 0) {
-		printf("Test #5 failed: Element #3 is incorrect\n");
-		exit(-1);
-	} 
+	rchkAssertEqualsContent("SET", elements[0].bytes, 3, "element #0 value check");
+	rchkAssertEqualsContent("MYKEY", elements[1].bytes, 5, "element #1 value check");
+	rchkAssertEqualsContent("MYVALUE", elements[2].bytes, 7, "element #2 value check");
 
 	rchkClientFree(client);
 
