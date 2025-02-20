@@ -102,6 +102,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		return;
 	}
 
+	// pipelining
 	do {
 		int processed = rchkProcessInputQuery(client);
 
