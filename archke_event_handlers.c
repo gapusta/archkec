@@ -114,6 +114,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		RchkKVStore* commands = getCommands();
 
 		RchkKVValue* cmd = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
+
 		void (*command) (RchkClient*) = cmd->value;
 
 		command(client);
