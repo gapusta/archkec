@@ -40,7 +40,7 @@ RchkKVStore* getCommands() { return commands; }
     Response (simple string): +<msg>\r\n
 */
 void echoCommand(RchkClient* client) {
-    RchkArrayElement* msg = &client->in[1]; 
+    RchkArrayElement* msg = &client->commandElements[1];
     rchkAppendToReply(client, ARCHKE_SIMPLE_STRING_PREFIX, strlen(ARCHKE_SIMPLE_STRING_PREFIX));
     rchkAppendToReply(client, msg->bytes, msg->size);
     rchkAppendToReply(client, ARCHKE_DELIMETER, strlen(ARCHKE_DELIMETER));
@@ -52,8 +52,8 @@ void echoCommand(RchkClient* client) {
 */
 void setCommand(RchkClient* client) {
     // 1.
-    RchkArrayElement* key = &client->in[1];
-    RchkArrayElement* value = &client->in[2];
+    RchkArrayElement* key = &client->commandElements[1];
+    RchkArrayElement* value = &client->commandElements[2];
 
     char* keyDup = rchkDuplicate(key->bytes, key->size);
     char* valueDup = rchkDuplicate(value->bytes, value->size);
@@ -73,7 +73,7 @@ void setCommand(RchkClient* client) {
     Response not found (null) : _\r\n
 */
 void getCommand(RchkClient* client) {
-    RchkArrayElement* key = &client->in[1];
+    RchkArrayElement* key = &client->commandElements[1];
 
     RchkKVValue* value = rchkKVStoreGet(kvstore, key->bytes, key->size);
 
@@ -99,7 +99,7 @@ void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
 */
 void delCommand(RchkClient* client) {
     // 1.
-    RchkArrayElement* key = &client->in[1];
+    RchkArrayElement* key = &client->commandElements[1];
 
     int deleted = rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
 

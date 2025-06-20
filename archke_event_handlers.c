@@ -104,26 +104,30 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 
 	// pipelining
 	do {
-		int processed = rchkProcessInputQuery(client);
+		int processedBytesAmount = rchkProcessReadBuffer(client);
 
-		if (!rchkIsProcessInputQueryDone(client)) {
+		if (!rchkIsCompleteCommandReceived(client)) {
 			return;
 		}
 
-		// run command
+		// fetch the command from command store
 		RchkKVStore* commands = getCommands();
 
-		RchkKVValue* cmd = rchkKVStoreGet(commands, client->in[0].bytes, client->in[0].size);
+		char* commandName = client->commandElements[0].bytes;
+		int commandNameSize = client->commandElements[0].size;
+
+		RchkKVValue* cmd = rchkKVStoreGet(commands, commandName, commandNameSize);
 
 		void (*command) (RchkClient*) = cmd->value;
 
+		// run command
 		command(client);
 
-		if (processed >= client->readBufferOccupied) {
+		if (processedBytesAmount >= client->readBufferOccupied) {
 			break;
 		}
 
-		rchkClientResetInputOnly(client, processed);
+		rchkClientResetInputOnly(client, processedBytesAmount);
 	} while (1);
 
 	// register write handler to send response back

@@ -25,9 +25,9 @@ typedef struct RchkClient {
 	int readBufferSize;
 	int readBufferOccupied;
 
-    RchkArrayElement* in;
-	int inCount;
-	int inIndex;
+    RchkArrayElement* commandElements;
+	int commandElementsCount;
+	int commandElementsCurrentIndex;
 	
 	// output
 	RchkResponseElement* out;
@@ -41,8 +41,8 @@ void rchkClientReset(RchkClient* client); // reseting client after each command
 void rchkClientResetInputOnly(RchkClient* client, int readBufferProcessed);
 void rchkClientFree(RchkClient* client);
 
-int rchkProcessInputQuery(RchkClient* client);
-int rchkIsProcessInputQueryDone(RchkClient* client);
+int rchkProcessReadBuffer(RchkClient* client);
+int rchkIsCompleteCommandReceived(RchkClient* client);
 
 char* rchkDuplicate(const char* bytes, int size);
 void  rchkFreeDuplicate(char* bytes, int size);
