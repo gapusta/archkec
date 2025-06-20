@@ -21,13 +21,14 @@ RchkClient* rchkClientNew(int fd) {
     RchkArrayElement* in = NULL;
     char* readBuffer = NULL;
 
-    // input memory arena and array
+    // will contain raw data/bytes from client
     readBuffer = malloc(ARCHKE_ELEMENTS_MEMORY_MAX_SIZE * sizeof(char));
     if (readBuffer == NULL) {
         goto client_create_err;
     }
 	memset(readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
 
+	// each command is parsed to an array of bulk/binary string before passed further
     in = malloc(ARCHKE_ELEMENTS_ARRAY_MAX_SIZE * sizeof(RchkArrayElement));
 	if (in == NULL) {
 		goto client_create_err;
