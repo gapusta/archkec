@@ -1,0 +1,136 @@
+    ARCHKE client-server protocol (ACSP)
+
+Simple string
+
+    Pattern: +<string-in-ascii-encoding>\r\n
+
+    Must not contain CR(\r) or LF(\n)
+
+Bulk\Binary String
+
+    Pattern: $<length>\r\n<binary-data>
+
+    "length" - the string's length (in bytes), encoded in ASCII
+
+Arrays
+
+    Pattern: *<number-of-elements>\r\n<element-1>...<element-n>
+
+    "number-of-elements" - number of elements, encoded in ASCII
+
+Integers
+
+    Pattern: :[+|-]<value>\r\n
+
+    - The colon (:) as the first byte
+    - An optional plus(+) or minus(-) as the sign
+    - "value" = One or more decimal digits (0..9) as the integer's unsigned, base-10 value
+    - The CRLF terminator
+
+    For example: ":0\r\n", ":1000\r\n", ":-69\r\n"
+
+Booleans
+
+    #<t|f>\r\n
+
+    A t character for true values, or an f character for false ones
+
+Nulls
+
+    The null data type represents non-existent values.
+
+    Nulls' encoding is the underscore (_) character, followed by the CRLF terminator (\r\n):
+
+    _\r\n
+
+Simple errors
+
+    -<string-in-ascii-encoding>\r\n
+
+    Must not contain CR(\r) or LF(\n)
+
+    Examples:
+        -ERR unknown command 'asdf'
+
+        The first upper-case word after the -, up to the first space or newline,
+        represents the kind of error returned. This word is called an error prefix.
+        Note that the error prefix is a convention used by ARCHKE
+
+
+ECHO command
+
+    Returns back to what user sent
+
+    Example of ECHO command encoded:
+
+    Request(Simple string): +hello\r\n
+    Response(Simple string): +hello\r\n
+
+SET command
+
+    Creates key-value pairs. if the key already holds a value, it is overwritten
+
+    Example of SET command encoded:
+
+    Request:
+	    *3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE
+
+    Responses:
+        Success:
+            +OK\r\n
+
+        Error:
+            -ERR <cause>\r\n
+
+    This command creates a key-value pair "MYKEY"->"MYVALUE"
+
+GET command
+
+    Retrieves a value by given key
+
+    Example of GET command encoded:
+
+    Request:
+        *2\r\n$3\r\nGET$5\r\nMYKEY
+
+    Response:
+        Success:
+            Response value comes as bulk string (for example: $7\r\nMYVALUE) or
+            as Null if no value has been found
+
+        Error:
+            -ERR <cause>\r\n
+
+EXISTS command
+
+    Returns true if a value associated with a given key exists. Returns false if otherwise
+
+    Example:
+
+    Request:
+        *2\r\n$6\r\nEXISTS$5\r\nMYKEY
+
+    Response:
+        Success:
+            "true" (if a value associated with "MYKEY" exists)
+            "false" (if a value associated with "MYKEY" does not exist)
+
+        Error:
+            -ERR <cause>\r\n
+
+DELETE command
+
+    Removes a value from the storage by given key
+
+    Example:
+
+    Request:
+        *2\r\n$6\r\nDEL$5\r\nMYKEY
+
+    Response: returns an amount of deleted values
+        Success:
+            "1" (if a value associated with "MYKEY" has been deleted)
+            "0" (if a value associated with "MYKEY" does not exist)
+
+        Error:
+            -ERR <cause>\r\n
