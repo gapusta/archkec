@@ -1,10 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
 #include "archke_server.h"
 #include "archke_socket.h"
 #include "archke_event_loop.h"
@@ -18,23 +15,18 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 	RchkSocketBuffer buffs[ARCHKE_WRITE_MAX_OUTPUTS];
 
 	int outputs = 0;
-	RchkResponseElement* el = client->unread;
-	while (el != NULL) {
-		buffs[outputs].size = el->size;
-		buffs[outputs].buffer = el->bytes;
-		// Great for debugging, might use later
-		// for(int i=0; i<el->size; i++) {
-		// 	printf("%d ", el->bytes[i]);
-		// }
+	RchkResponseElement* element = client->unwritten;
+	while (element != NULL) {
+		buffs[outputs].size = element->size;
+		buffs[outputs].buffer = element->bytes;
 		outputs++;
-		el = el->next;
+		element = element->next;
 	}
-	// printf("\n");
 
-	int read = rchkSocketWritev(client->fd, buffs, outputs);
-	if (read < 0) {
+	int bytesWrittenAmount = rchkSocketWritev(client->fd, buffs, outputs);
+	if (bytesWrittenAmount < 0) {
 		logError("Write to client failed");
-		// close connections (exactly how its handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
+		// close connections (exactly how it is handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
 		rchkSocketShutdown(client->fd);
 		rchkEventLoopUnregister(eventLoop, client->fd);
 		rchkSocketClose(client->fd);
@@ -43,21 +35,20 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 		return;
 	}
 
-	el = client->unread;
-	while (el != NULL) {
-		if (read < el->size) {
-			client->unread->bytes = el->bytes + read;
-			client->unread->size = el->size - read;
-			client->unread->next = el->next;
+	element = client->unwritten;
+	while (element != NULL) {
+		if (bytesWrittenAmount < element->size) {
+			client->unwritten->bytes = element->bytes + bytesWrittenAmount;
+			client->unwritten->size = element->size - bytesWrittenAmount;
+			client->unwritten->next = element->next;
 			break;
 		}
-		read = read - el->size;
-		el = el->next;
+		bytesWrittenAmount -= element->size;
+		element = element->next;
 	}
 
 	// check if all the data has been sent
-	if (el == NULL) {
-		// printf("---------------------\n");
+	if (element == NULL) {
 		rchkClientReset(client);
 
 		// register read handler for client
@@ -68,7 +59,6 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 			rchkEventLoopUnregister(eventLoop, client->fd);
 			rchkSocketClose(client->fd);
 			rchkClientFree(client);
-			return;
 		}
 	}
 }
@@ -76,12 +66,12 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
 	
-	int nbytes = rchkSocketRead(client->fd, client->readBuffer, client->readBufferSize);
-	client->readBufferOccupied = nbytes;	
+	int bytesReceivedAmount = rchkSocketRead(client->fd, client->readBuffer, client->readBufferSize);
+	client->readBufferOccupied = bytesReceivedAmount;
 
-	if (nbytes < 0) {
+	if (bytesReceivedAmount < 0) {
 		logError("Read from client failed");
-		// close connections (exactly how its handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
+		// close connections (exactly how it is handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
 		rchkSocketShutdown(client->fd);
 		rchkEventLoopUnregister(eventLoop, client->fd);
 		rchkSocketClose(client->fd);
@@ -90,9 +80,9 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		return;
 	}
 
-	// client sent us FIN and we received it (client is waiting for us to send FIN back)
+	// client sent us FIN, and we received it (client is waiting for us to send FIN back)
 	// client will not send us any more data
-	if (nbytes == 0) {
+	if (bytesReceivedAmount == 0) {
 		// we send FIN(or possibly FIN,ACK) back (or rather we ask the kernel to send FIN back to client)
 		rchkSocketShutdownWrite(client->fd);
 		// then we close (release resources)
@@ -132,8 +122,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	} while (1);
 
 	// register write handler to send response back
-	client->unread = client->out;
-	client->unreadOffset = 0;
+	client->unwritten = client->out;
 	RchkClientConfig config = { .data = client, .free = NULL };
 
 	if (rchkEventLoopRegister(eventLoop, client->fd, ARCHKE_EVENT_LOOP_WRITE_EVENT, rchkHandleWriteEvent, &config) < 0) {
@@ -142,7 +131,6 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		rchkEventLoopUnregister(eventLoop, client->fd);
 		rchkSocketClose(client->fd);
 		rchkClientFree(client);
-		return;
 	}
 }
 
@@ -180,4 +168,3 @@ void rchkHandleAcceptEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* e
 		logError("Client event registration failed");
 	}
 }
-

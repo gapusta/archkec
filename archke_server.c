@@ -60,8 +60,7 @@ RchkClient* rchkClientNew(int fd) {
 
 	client->out = NULL;
 	client->tail = NULL;
-	client->unread = NULL;
-	client->unreadOffset = 0;
+	client->unwritten = NULL;
 
     return client;
 
@@ -94,8 +93,7 @@ static void rchkClearClientOutputList(RchkClient* client) {
 	}
 	client->out = NULL;
 	client->tail = NULL;
-	client->unread = NULL;
-	client->unreadOffset = 0;
+	client->unwritten = NULL;
 }
 
 void rchkClientResetInputOnly(RchkClient* client, int bytesProcessed) {

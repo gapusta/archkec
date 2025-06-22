@@ -32,8 +32,7 @@ typedef struct RchkClient {
 	// output
 	RchkResponseElement* out;
 	RchkResponseElement* tail;
-	RchkResponseElement* unread;
-	int unreadOffset;
+	RchkResponseElement* unwritten;
 } RchkClient;
 
 RchkClient* rchkClientNew(int fd);
