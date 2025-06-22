@@ -123,11 +123,12 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		// run command
 		command(client);
 
-		if (processedBytesAmount >= client->readBufferOccupied) {
-			break;
+		if (processedBytesAmount < client->readBufferOccupied) {
+			rchkClientResetInputOnly(client, processedBytesAmount);
+			continue;
 		}
 
-		rchkClientResetInputOnly(client, processedBytesAmount);
+		break;
 	} while (1);
 
 	// register write handler to send response back

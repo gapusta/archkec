@@ -68,7 +68,6 @@ RchkClient* rchkClientNew(int fd) {
 client_create_err:
     if (readBuffer != NULL) free(readBuffer);
     if (commandElements != NULL) free(commandElements);
-    if (client != NULL) free(client);
 
     return NULL;
 }
@@ -99,12 +98,12 @@ static void rchkClearClientOutputList(RchkClient* client) {
 	client->unreadOffset = 0;
 }
 
-void rchkClientResetInputOnly(RchkClient* client, int readBufferProcessed) {
-	int left = client->readBufferOccupied - readBufferProcessed;
+void rchkClientResetInputOnly(RchkClient* client, int bytesProcessed) {
+	int bytesLeft = client->readBufferOccupied - bytesProcessed;
 		
 	client->readState = ARCHKE_BSAR_ARRAY;		
-	client->readBufferOccupied = left;
-	memmove(client->readBuffer, client->readBuffer + readBufferProcessed, left);
+	client->readBufferOccupied = bytesLeft;
+	memmove(client->readBuffer, client->readBuffer + bytesProcessed, bytesLeft);
 	rchkClearClientCommandElementsList(client);
 }
 
@@ -131,8 +130,8 @@ char* rchkDuplicate(const char* bytes, int size) {
         // TODO: write better error error handling
         rchkExitFailure("duplication operation failed: malloc");
     }
-	// return pointer to 'dup'
-    return memcpy(dup, bytes, size);
+	memcpy(dup, bytes, size);
+    return dup;
 }
 
 void rchkFreeDuplicate(char* bytes, int size) {
