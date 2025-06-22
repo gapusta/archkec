@@ -58,9 +58,9 @@ RchkClient* rchkClientNew(int fd) {
     client->commandElementsCurrentIndex = 0;
     client->commandElementsCount = 0;
 
-	client->out = NULL;
-	client->tail = NULL;
-	client->unwritten = NULL;
+	client->responseElements = NULL;
+	client->responseElementsTail = NULL;
+	client->responseElementsUnwritten = NULL; // not yet written response elements
 
     return client;
 
@@ -84,16 +84,16 @@ static void rchkClearClientCommandElementsList(RchkClient* client) {
 }
 
 static void rchkClearClientOutputList(RchkClient* client) {
-	RchkResponseElement* current = client->out;
+	RchkResponseElement* current = client->responseElements;
 	while (current != NULL) {
 		RchkResponseElement* next = current->next;
 		free(current->bytes);
 		free(current);
 		current = next;
 	}
-	client->out = NULL;
-	client->tail = NULL;
-	client->unwritten = NULL;
+	client->responseElements = NULL;
+	client->responseElementsTail = NULL;
+	client->responseElementsUnwritten = NULL;
 }
 
 void rchkClientResetInputOnly(RchkClient* client, int bytesProcessed) {
@@ -118,7 +118,7 @@ void rchkClientFree(RchkClient* client) {
 	rchkClearClientCommandElementsList(client);
 	rchkClearClientOutputList(client);
     free(client->commandElements);
-    free(client->out);
+    free(client->responseElements);
     free(client);
 }
 
@@ -149,19 +149,19 @@ int rchkAppendToReply(RchkClient* client, char* data, int dataSize) {
 	}
 	memcpy(element->bytes, data, element->size);
 
-	if (!client->out) {
-		client->out = element;
-		client->tail = element;
+	if (!client->responseElements) {
+		client->responseElements = element;
+		client->responseElementsTail = element;
 	} else {
-		client->tail->next = element;
-		client->tail = element;
+		client->responseElementsTail->next = element;
+		client->responseElementsTail = element;
 	}
 
 	return 0;
 }
 
 int rchkAppendIntegerToReply(RchkClient* client, int data) {
-	// 1. integet to string
+	// 1. integer to string
 	char integer[ARCHKE_MAX_BINARY_SIZE_CHARS] = { 0 };
 	
 	if (snprintf(integer, ARCHKE_MAX_BINARY_SIZE_CHARS, "%d", data) < 0) {

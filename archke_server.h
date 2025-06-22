@@ -19,20 +19,21 @@ typedef struct RchkResponseElement {
 typedef struct RchkClient {
 	int fd;
 
-	// input
+	// raw input bytes
 	int readState;	
 	char* readBuffer;
 	int readBufferSize;
 	int readBufferOccupied;
 
+	// any request/query/command is expected to be an array of bulk/binary strings
     RchkArrayElement* commandElements;
 	int commandElementsCount;
 	int commandElementsCurrentIndex;
 	
 	// output
-	RchkResponseElement* out;
-	RchkResponseElement* tail;
-	RchkResponseElement* unwritten;
+	RchkResponseElement* responseElements;
+	RchkResponseElement* responseElementsTail;
+	RchkResponseElement* responseElementsUnwritten; // not yet written response elements
 } RchkClient;
 
 RchkClient* rchkClientNew(int fd);

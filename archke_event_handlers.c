@@ -15,7 +15,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 	RchkSocketBuffer buffs[ARCHKE_WRITE_MAX_OUTPUTS];
 
 	int outputs = 0;
-	RchkResponseElement* element = client->unwritten;
+	RchkResponseElement* element = client->responseElementsUnwritten;
 	while (element != NULL) {
 		buffs[outputs].size = element->size;
 		buffs[outputs].buffer = element->bytes;
@@ -35,12 +35,12 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 		return;
 	}
 
-	element = client->unwritten;
+	element = client->responseElementsUnwritten;
 	while (element != NULL) {
 		if (bytesWrittenAmount < element->size) {
-			client->unwritten->bytes = element->bytes + bytesWrittenAmount;
-			client->unwritten->size = element->size - bytesWrittenAmount;
-			client->unwritten->next = element->next;
+			client->responseElementsUnwritten->bytes = element->bytes + bytesWrittenAmount;
+			client->responseElementsUnwritten->size = element->size - bytesWrittenAmount;
+			client->responseElementsUnwritten->next = element->next;
 			break;
 		}
 		bytesWrittenAmount -= element->size;
@@ -122,7 +122,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	} while (1);
 
 	// register write handler to send response back
-	client->unwritten = client->out;
+	client->responseElementsUnwritten = client->responseElements;
 	RchkClientConfig config = { .data = client, .free = NULL };
 
 	if (rchkEventLoopRegister(eventLoop, client->fd, ARCHKE_EVENT_LOOP_WRITE_EVENT, rchkHandleWriteEvent, &config) < 0) {
