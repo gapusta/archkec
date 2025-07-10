@@ -9,6 +9,8 @@
 #define ARCHKE_DELIMETER "\r\n"
 #define ARCHKE_NULL "_\r\n"
 #define ARCHKE_OK "+OK\r\n"
+#define ARCHKE_TRUE "#t\r\n"
+#define ARCHKE_FALSE "#f\r\n"
 
 // TODO: kvstore is not supposed to be here
 RchkKVStore* kvstore; // stores data
@@ -31,6 +33,7 @@ void initCommands() {
     rchkKVStorePut(commands, "SET",  strlen("SET"),  setCommand, -1);
     rchkKVStorePut(commands, "GET",  strlen("GET"),  getCommand, -1);
     rchkKVStorePut(commands, "DEL",  strlen("DEL"),  delCommand, -1);
+    rchkKVStorePut(commands, "EXISTS",  strlen("EXISTS"),  existsCommand, -1);
 }
 
 RchkKVStore* getCommands() { return commands; }
@@ -87,12 +90,28 @@ void getCommand(RchkClient* client) {
     }
 }
 
+/*
+    EXISTS <key>
+    Response (boolean) : #<t|f>\r\n
+    t - key/value pair exists
+    f - key/value pair does not exist
+*/
+void existsCommand(RchkClient* client) {
+    RchkArrayElement* key = &client->commandElements[1];
+
+    RchkKVValue* value = rchkKVStoreGet(kvstore, key->bytes, key->size);
+
+    if (value != NULL) {
+        rchkAppendToReply(client, ARCHKE_TRUE, strlen(ARCHKE_TRUE));
+    } else {
+        rchkAppendToReply(client, ARCHKE_FALSE, strlen(ARCHKE_FALSE));
+    }
+}
 
 void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
     rchkFreeDuplicate(key, keySize);
     rchkFreeDuplicate(value, valueSize);
 }
-
 /*
     DELETE <key>
     Response (Integer reply), the number of keys that were removed - :<integer>\r\n

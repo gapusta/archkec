@@ -19,14 +19,16 @@ typedef struct RchkResponseElement {
 typedef struct RchkClient {
 	int fd;
 
-	// raw input bytes
-	int readState;	
+	// [ raw input -> command elements ] mapping state machine
+	int readState;
+
+	// raw input bytes from socket
 	char* readBuffer;
 	int readBufferSize;
 	int readBufferOccupied;
 
-	// any request/query/command is expected to be an array of bulk/binary strings
-    RchkArrayElement* commandElements;
+	// any command is expected to be an array of bulk/binary strings
+    RchkArrayElement* commandElements; // elements of this command/array
 	int commandElementsCount;
 	int commandElementsCurrentIndex;
 	

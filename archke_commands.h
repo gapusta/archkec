@@ -19,6 +19,7 @@ void echoCommand(RchkClient* client);
 void setCommand(RchkClient* client);
 void getCommand(RchkClient* client);
 void delCommand(RchkClient* client);
+void existsCommand(RchkClient* client);
 
 #endif
 
