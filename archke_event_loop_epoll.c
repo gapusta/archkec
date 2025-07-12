@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h> 
 #include <netinet/in.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+#include "archke_time.h"
 #include "archke_event_loop.h"
 
 RchkEventLoop* rchkEventLoopNew(int setsize) {
@@ -82,6 +82,21 @@ int rchkEventLoopRegister(RchkEventLoop* eventLoop, int fd, int mask, rchkHandle
     return 0;
 }
 
+int rchkEventLoopRegisterTimeEvent(RchkEventLoop* eventLoop, long long milliseconds, rchkHandleTimeEvent* proc) {
+    RchkTimeEvent* te = malloc(sizeof(RchkTimeEvent));
+    if (te == NULL) {
+        return -1;
+    }
+
+    te->when = getMonotonicUs() + milliseconds;
+    te->eventHandle = proc;
+    te->next = eventLoop->timeEventHead;
+
+    eventLoop->timeEventHead = te;
+
+    return 0;
+}
+
 void rchkEventLoopUnregister(RchkEventLoop* eventLoop, int fd) {
     epoll_ctl(eventLoop->fd, EPOLL_CTL_DEL, fd, NULL);
 
@@ -93,14 +108,35 @@ void rchkEventLoopUnregister(RchkEventLoop* eventLoop, int fd) {
     event->freeClientData = NULL;
 }
 
-int rchkEventLoopMain(RchkEventLoop* eventLoop) {
+static int getEarliestTimerOffset(RchkEventLoop* eventLoop) {
+    RchkTimeEvent *earliest = eventLoop->timeEventHead;
+    if (earliest == NULL) {
+        return -1;
+    }
+
+    RchkTimeEvent *te = earliest->next;
+    while (te) {
+        if (te->when < earliest->when) {
+            earliest = te;
+        }
+        te = te->next;
+    }
+
+    const uint64_t now = getMonotonicUs();
+    return (now >= earliest->when) ? 0 : ((int)(earliest->when - now));
+}
+
+void rchkEventLoopMain(RchkEventLoop* eventLoop) {
     struct epoll_event* epollEvents = (struct epoll_event*) eventLoop->apiData;
 	for(;;) {
-		int nevents = epoll_wait(eventLoop->fd, epollEvents, eventLoop->setsize, -1);
+	    int timeout = getEarliestTimerOffset(eventLoop);
+		int nevents = epoll_wait(eventLoop->fd, epollEvents, eventLoop->setsize, timeout);
         if (nevents < 0) {
-            return -1;
+            // TODO: Handle error
+            return;
         }
 
+	    // IO events
         for (int i=0; i<nevents; i++) {
             int fd = epollEvents[i].data.fd;
             RchkEvent* event = &eventLoop->events[fd];
@@ -113,9 +149,19 @@ int rchkEventLoopMain(RchkEventLoop* eventLoop) {
                 event->writeEventHandle(eventLoop, fd, event, event->clientData);
             }
         }
-    }
 
-    return 0;
+        // time events
+	    RchkTimeEvent* timeEvent = eventLoop->timeEventHead;
+	    uint64_t now = getMonotonicUs();
+	    while (timeEvent) {
+	        if (now >= timeEvent->when) {
+	            int milliseconds = timeEvent->eventHandle(eventLoop, timeEvent);
+                now = getMonotonicUs();
+	            timeEvent->when = now + milliseconds;
+	        }
+	        timeEvent = timeEvent->next;
+	    }
+    }
 }
 
 void rchkEventLoopFree(RchkEventLoop* eventLoop) {

@@ -4,6 +4,9 @@
 #include "archke_server.h"
 #include "archke_error.h"
 
+// #define ARCHKE_SERVER_CRON_DEFAULT_HZ 10
+#define ARCHKE_SERVER_CRON_DEFAULT_HZ 1
+
 #define ARCHKE_ELEMENTS_ARRAY_MAX_SIZE 256
 #define ARCHKE_ELEMENTS_MEMORY_MAX_SIZE 1024
 
@@ -15,6 +18,12 @@
 #define ARCHKE_BSAR_DONE 5 // end state
 
 #define ARCHKE_MAX_BINARY_SIZE_CHARS 128
+
+RchkServer server; // Global server config
+
+void rchkServerInit() {
+	server.hz = ARCHKE_SERVER_CRON_DEFAULT_HZ;
+}
 
 RchkClient* rchkClientNew(int fd) {
     RchkClient* client = NULL;
@@ -289,3 +298,8 @@ int rchkIsCompleteCommandReceived(RchkClient* client) {
 	return client->readState == ARCHKE_BSAR_DONE;
 }
 
+int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
+	printf("Server cron call...\n");
+
+	return 1000/server.hz;
+}

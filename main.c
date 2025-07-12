@@ -7,6 +7,7 @@
 
 int main(void) {
 	// server initialization
+	rchkServerInit();
 	initKvstore();
 	initCommands();
 
@@ -29,6 +30,12 @@ int main(void) {
 		rchkExitFailure("Cannot create/init main event loop");
   	}
 
+	// register server cron as time event
+	if (rchkEventLoopRegisterTimeEvent(eventLoop, 1, serverCron) < 0) {
+		rchkServerSocketClose(serverSocketFd);
+		rchkExitFailure("Cannot register 'server cron' time event");
+	}
+
 	// register server's socket and "accept" event handler
 	RchkClientConfig config = { .data = &serverSocketFd, .free = NULL };
 	if (rchkEventLoopRegister(eventLoop, serverSocketFd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleAcceptEvent, &config) < 0) {
@@ -38,10 +45,7 @@ int main(void) {
 	}
 
 	// run event loop
-	if (rchkEventLoopMain(eventLoop) < 0) {
-		// TODO: Gracefully disconnect clients and release resources 
-		rchkExitFailure("Error during main event loop run");
-	}
+	rchkEventLoopMain(eventLoop);
 
 	rchkEventLoopFree(eventLoop);
 	rchkServerSocketClose(serverSocketFd);
