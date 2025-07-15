@@ -68,7 +68,13 @@ ECHO command
 
 SET command
 
+    SET <key> <value> [EX seconds]
+
     Creates key-value pairs. if the key already holds a value, it is overwritten
+
+    Options:
+
+    (Not implemented yet) EX seconds -- Set the specified expire time, in seconds (a positive integer).
 
     Example of SET command encoded:
 

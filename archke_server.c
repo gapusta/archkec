@@ -299,7 +299,7 @@ int rchkIsCompleteCommandReceived(RchkClient* client) {
 }
 
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
-	printf("Server cron call...\n");
+	// printf("Server cron call...\n");
 
 	return 1000/server.hz;
 }
