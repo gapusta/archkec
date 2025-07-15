@@ -53,7 +53,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 
 		// register read handler for client
 		RchkClientConfig config = { .data = client, .free = NULL };
-		if (rchkEventLoopRegister(eventLoop, client->fd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleReadEvent, &config) < 0) {
+		if (rchkEventLoopRegisterIOEvent(eventLoop, client->fd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleReadEvent, &config) < 0) {
 			logError("Client socket read event registration error");
 			rchkSocketShutdown(client->fd);
 			rchkEventLoopUnregister(eventLoop, client->fd);
@@ -125,7 +125,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	client->responseElementsUnwritten = client->responseElements;
 	RchkClientConfig config = { .data = client, .free = NULL };
 
-	if (rchkEventLoopRegister(eventLoop, client->fd, ARCHKE_EVENT_LOOP_WRITE_EVENT, rchkHandleWriteEvent, &config) < 0) {
+	if (rchkEventLoopRegisterIOEvent(eventLoop, client->fd, ARCHKE_EVENT_LOOP_WRITE_EVENT, rchkHandleWriteEvent, &config) < 0) {
 		logError("Client socket write event registration error");
 		rchkSocketShutdown(client->fd);
 		rchkEventLoopUnregister(eventLoop, client->fd);
@@ -162,7 +162,7 @@ void rchkHandleAcceptEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* e
 		.free = NULL 
 	};
 	// register read handler for new client. TODO: implement 'free()' 
-	if (rchkEventLoopRegister(eventLoop, clientSocketFd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleReadEvent, &config) < 0) {
+	if (rchkEventLoopRegisterIOEvent(eventLoop, clientSocketFd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleReadEvent, &config) < 0) {
 		rchkSocketClose(client->fd);
 		rchkClientFree(client);
 		logError("Client event registration failed");

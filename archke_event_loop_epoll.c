@@ -53,7 +53,7 @@ err:
     return NULL;
 }
 
-int rchkEventLoopRegister(RchkEventLoop* eventLoop, int fd, int mask, rchkHandleEvent* proc, RchkClientConfig* config) {
+int rchkEventLoopRegisterIOEvent(RchkEventLoop* eventLoop, int fd, int mask, rchkHandleEvent* proc, RchkClientConfig* config) {
     // 1. init epoll
     int epollMask = 0;
     if (mask & ARCHKE_EVENT_LOOP_READ_EVENT) epollMask |= EPOLLIN;

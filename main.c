@@ -38,7 +38,7 @@ int main(void) {
 
 	// register server's socket and "accept" event handler
 	RchkClientConfig config = { .data = &serverSocketFd, .free = NULL };
-	if (rchkEventLoopRegister(eventLoop, serverSocketFd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleAcceptEvent, &config) < 0) {
+	if (rchkEventLoopRegisterIOEvent(eventLoop, serverSocketFd, ARCHKE_EVENT_LOOP_READ_EVENT, rchkHandleAcceptEvent, &config) < 0) {
 		rchkEventLoopFree(eventLoop);
 		rchkServerSocketClose(serverSocketFd);
 		rchkExitFailure("Cannot register 'connection accept' event handler");
