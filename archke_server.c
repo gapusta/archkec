@@ -1,11 +1,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <signal.h>
 #include "archke_server.h"
 #include "archke_error.h"
 
+#define	SIGINT		2	/* Interactive attention signal.  */
+#define	SIGTERM		15	/* Termination request.  */
+
 // #define ARCHKE_SERVER_CRON_DEFAULT_HZ 10
 #define ARCHKE_SERVER_CRON_DEFAULT_HZ 1
+#define ARCHKE_SERVER_NOT_SHUTDOWN 0
+#define ARCHKE_SERVER_SHUTDOWN 1
 
 #define ARCHKE_ELEMENTS_ARRAY_MAX_SIZE 256
 #define ARCHKE_ELEMENTS_MEMORY_MAX_SIZE 1024
@@ -21,8 +27,13 @@
 
 RchkServer server; // Global server config
 
+void setupSignalHandlers(void);
+
 void rchkServerInit() {
 	server.hz = ARCHKE_SERVER_CRON_DEFAULT_HZ;
+	server.shutdown = ARCHKE_SERVER_NOT_SHUTDOWN;
+
+	setupSignalHandlers();
 }
 
 RchkClient* rchkClientNew(int fd) {
@@ -298,8 +309,25 @@ int rchkIsCompleteCommandReceived(RchkClient* client) {
 	return client->readState == ARCHKE_BSAR_DONE;
 }
 
+static void shutdownSignalHandler(int sig) {
+	server.shutdown = ARCHKE_SERVER_SHUTDOWN;
+}
+
+void setupSignalHandlers(void) {
+	struct sigaction act;
+
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	act.sa_handler = shutdownSignalHandler;
+	sigaction(SIGTERM, &act, NULL);
+	sigaction(SIGINT, &act, NULL);
+}
+
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
-	// printf("Server cron call...\n");
+	if (server.shutdown) {
+		// TODO: close listening socket? (Apparently this allows faster restarts)
+		exit(0);
+	}
 
 	return 1000/server.hz;
 }

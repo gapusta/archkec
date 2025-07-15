@@ -42,6 +42,7 @@ typedef struct RchkClient {
 
 typedef struct RchkServer {
 	int hz;
+	int shutdown;
 } RchkServer;
 
 extern RchkServer server;

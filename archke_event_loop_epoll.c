@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -5,6 +6,8 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+
+#include "archke_error.h"
 #include "archke_time.h"
 #include "archke_event_loop.h"
 
@@ -130,14 +133,14 @@ void rchkEventLoopMain(RchkEventLoop* eventLoop) {
     struct epoll_event* epollEvents = (struct epoll_event*) eventLoop->apiData;
 	for(;;) {
 	    int timeout = getEarliestTimerOffset(eventLoop);
-		int nevents = epoll_wait(eventLoop->fd, epollEvents, eventLoop->setsize, timeout);
-        if (nevents < 0) {
-            // TODO: Handle error
+		int events = epoll_wait(eventLoop->fd, epollEvents, eventLoop->setsize, timeout);
+        if (events == -1 && errno != EINTR) {
+            rchkExitFailure("aeApiPoll: epoll_wait");
             return;
         }
 
 	    // IO events
-        for (int i=0; i<nevents; i++) {
+        for (int i=0; i<events; i++) {
             int fd = epollEvents[i].data.fd;
             RchkEvent* event = &eventLoop->events[fd];
 
