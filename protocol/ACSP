@@ -74,7 +74,7 @@ SET command
 
     Options:
 
-    (Not implemented yet) EX seconds -- Set the specified expire time, in seconds (a positive integer).
+    EX seconds - Set the specified expire time, in seconds (a positive integer).
 
     Example of SET command encoded:
 

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "archke_commands.h"
 #include "archke_error.h"
+#include "archke_time.h"
 
 #define ARCHKE_SIMPLE_STRING_PREFIX "+"
 #define ARCHKE_BINARY_STRING_PREFIX "$"
@@ -14,12 +15,18 @@
 
 // TODO: kvstore is not supposed to be here
 RchkKVStore* kvstore; // stores data
+RchkKVStore* expire; // stores when key keys will expire
 RchkKVStore* commands;
 
 void initKvstore() {
     kvstore = rchkKVStoreNew();
     if (kvstore == NULL) {
         rchkExitFailure("Db keystore creation failed");
+    }
+
+    expire = rchkKVStoreNew();
+    if (expire == NULL) {
+        rchkExitFailure("Db keystore expire creation failed");
     }
 }
 
@@ -38,6 +45,22 @@ void initCommands() {
 }
 
 RchkKVStore* getCommands() { return commands; }
+
+/*
+    Helper function. Used when key deletion happens to free memory from key and value
+*/
+void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
+    rchkFreeDuplicate(key, keySize);
+    rchkFreeDuplicate(value, valueSize);
+}
+
+/*
+    Helper function. Used when key deletion happens to free memory expiration date
+*/
+void rchkDelExpireValue(char* key, int keySize, void* value, int valueSize) {
+    rchkFreeDuplicate(key, keySize);
+    rchkFreeDuplicate(value, valueSize);
+}
 
 /*
     ECHO <msg>
@@ -67,6 +90,32 @@ void setCommand(RchkClient* client) {
         rchkExitFailure("'set' operation failed");
     }
 
+    // set expire
+    if (client->commandElementsCount > 4) {
+        uint64_t* timeout = malloc(sizeof(uint64_t));
+        if (timeout == NULL) {
+            rchkExitFailure("PANIC: memory allocation failed");
+            return;
+        }
+        const RchkArrayElement* timeoutElement = &client->commandElements[4];
+
+        char timeoutDup[timeoutElement->size + 1];
+        strncpy(timeoutDup, timeoutElement->bytes, timeoutElement->size);
+        timeoutDup[timeoutElement->size] = '\0';
+
+        *timeout = strtoul(timeoutDup, NULL, 10);
+
+        const uint64_t now = getMonotonicUs();
+
+        *timeout = now + *timeout * 1000;
+
+        char* keyDup2 = rchkDuplicate(key->bytes, key->size);
+        if (rchkKVStorePut(expire, keyDup2, key->size, timeout, -1) < 0) {
+            // TODO: write better error error handling
+            rchkExitFailure("'set' operation failed");
+        }
+    }
+
     // 2.
     rchkAppendToReply(client, ARCHKE_OK, strlen(ARCHKE_OK));
 }
@@ -80,8 +129,22 @@ void getCommand(RchkClient* client) {
     RchkArrayElement* key = &client->commandElements[1];
 
     RchkKVValue* value = rchkKVStoreGet(kvstore, key->bytes, key->size);
+    RchkKVValue* timeout = rchkKVStoreGet(expire, key->bytes, key->size);
 
     if (value != NULL) {
+        // check expire
+        if (timeout != NULL) {
+            uint64_t now = getMonotonicUs();
+            uint64_t* when = timeout->value;
+            if (now > *when) {
+                rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
+                rchkKVStoreDelete2(expire, key->bytes, key->size, rchkDelExpireValue);
+
+                rchkAppendToReply(client, ARCHKE_NULL, strlen(ARCHKE_NULL));
+                return;
+            }
+        }
+
         rchkAppendToReply(client, ARCHKE_BINARY_STRING_PREFIX, strlen(ARCHKE_BINARY_STRING_PREFIX));
         rchkAppendIntegerToReply(client, value->size);
         rchkAppendToReply(client, ARCHKE_DELIMETER, strlen(ARCHKE_DELIMETER));
@@ -109,10 +172,6 @@ void existsCommand(RchkClient* client) {
     }
 }
 
-void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
-    rchkFreeDuplicate(key, keySize);
-    rchkFreeDuplicate(value, valueSize);
-}
 /*
     DELETE <key>
     Response (Integer reply), the number of keys that were removed - :<integer>\r\n
@@ -122,6 +181,7 @@ void delCommand(RchkClient* client) {
     RchkArrayElement* key = &client->commandElements[1];
 
     int deleted = rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
+    rchkKVStoreDelete2(expire, key->bytes, key->size, rchkDelExpireValue);
 
     // 2.
     if (deleted < 1) {
