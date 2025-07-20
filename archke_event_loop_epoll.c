@@ -153,7 +153,7 @@ void rchkEventLoopMain(RchkEventLoop* eventLoop) {
             }
         }
 
-        // time events
+        // Time events
 	    RchkTimeEvent* timeEvent = eventLoop->timeEventHead;
 	    uint64_t now = getMonotonicUs();
 	    while (timeEvent) {
