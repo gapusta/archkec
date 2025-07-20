@@ -34,6 +34,7 @@ void initCommands() {
     rchkKVStorePut(commands, "GET",  strlen("GET"),  getCommand, -1);
     rchkKVStorePut(commands, "DEL",  strlen("DEL"),  delCommand, -1);
     rchkKVStorePut(commands, "EXISTS",  strlen("EXISTS"),  existsCommand, -1);
+    rchkKVStorePut(commands, "SHUTDOWN",  strlen("SHUTDOWN"),  shutdownCommand, -1);
 }
 
 RchkKVStore* getCommands() { return commands; }
@@ -130,3 +131,6 @@ void delCommand(RchkClient* client) {
     } 
 }
 
+void shutdownCommand(RchkClient* client) {
+    exit(0);
+}
