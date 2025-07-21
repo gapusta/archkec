@@ -15,7 +15,7 @@
 
 // TODO: kvstore is not supposed to be here
 RchkKVStore* kvstore; // stores data
-RchkKVStore* expire; // stores when key keys will expire
+RchkKVStore* expire; // stores when keys are supposed to expire
 RchkKVStore* commands;
 
 void initKvstore() {
@@ -73,6 +73,14 @@ void echoCommand(RchkClient* client) {
     rchkAppendToReply(client, ARCHKE_DELIMETER, strlen(ARCHKE_DELIMETER));
 }
 
+uint64_t rchkStringToULInt(const char* string, const int size) {
+    char timeoutDup[size + 1];
+    strncpy(timeoutDup, string, size);
+    timeoutDup[size] = '\0';
+
+    return strtoul(timeoutDup, NULL, 10);
+}
+
 /*
     SET <key> <val>
     Response (simple string): +OK\r\n
@@ -97,13 +105,10 @@ void setCommand(RchkClient* client) {
             rchkExitFailure("PANIC: memory allocation failed");
             return;
         }
+
         const RchkArrayElement* timeoutElement = &client->commandElements[4];
 
-        char timeoutDup[timeoutElement->size + 1];
-        strncpy(timeoutDup, timeoutElement->bytes, timeoutElement->size);
-        timeoutDup[timeoutElement->size] = '\0';
-
-        *timeout = strtoul(timeoutDup, NULL, 10);
+        *timeout = rchkStringToULInt(timeoutElement->bytes, timeoutElement->size);
 
         const uint64_t now = getMonotonicUs();
 
