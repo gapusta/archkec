@@ -4,11 +4,13 @@
 #include "archke_socket.h"
 #include "archke_event_loop.h"
 #include "archke_event_handlers.h"
+#include "archke_expire.h"
 
 int main(void) {
 	// server initialization
 	rchkServerInit();
 	initKvstore();
+	rchkInitExpire();
 	initCommands();
 
 	// create socket, open it and make it listen on port
