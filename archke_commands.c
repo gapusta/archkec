@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "archke_commands.h"
+#include "archke_server.h"
 #include "archke_error.h"
 #include "archke_time.h"
 #include "archke_expire.h"
@@ -15,15 +16,7 @@
 #define ARCHKE_FALSE "#f\r\n"
 
 // TODO: kvstore is not supposed to be here
-RchkKVStore* kvstore; // stores data
 RchkKVStore* commands;
-
-void initKvstore() {
-    kvstore = rchkKVStoreNew();
-    if (kvstore == NULL) {
-        rchkExitFailure("Db keystore creation failed");
-    }
-}
 
 void initCommands() {
     commands = rchkKVStoreNew();
@@ -80,7 +73,7 @@ void setCommand(RchkClient* client) {
     char* keyDup = rchkDuplicate(key->bytes, key->size);
     char* valueDup = rchkDuplicate(value->bytes, value->size);
 
-    if (rchkKVStorePut(kvstore, keyDup, key->size, valueDup, value->size) < 0) {
+    if (rchkKVStorePut(server.kvstore, keyDup, key->size, valueDup, value->size) < 0) {
         // TODO: write better error error handling
         rchkExitFailure("'set' operation failed");
     }
@@ -105,13 +98,13 @@ void setCommand(RchkClient* client) {
 void getCommand(RchkClient* client) {
     RchkArrayElement* key = &client->commandElements[1];
 
-    RchkKVValue* value = rchkKVStoreGet(kvstore, key->bytes, key->size);
+    RchkKVValue* value = rchkKVStoreGet(server.kvstore, key->bytes, key->size);
 
     if (value != NULL) {
         // check expire
         if (rchkIsExpired(key->bytes, key->size)) {
             rchkRemoveExpireTime(key->bytes, key->size);
-            rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
+            rchkKVStoreDelete2(server.kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
             rchkAppendToReply(client, ARCHKE_NULL, strlen(ARCHKE_NULL));
             return;
         }
@@ -134,7 +127,7 @@ void getCommand(RchkClient* client) {
 void existsCommand(RchkClient* client) {
     RchkArrayElement* key = &client->commandElements[1];
 
-    RchkKVValue* value = rchkKVStoreGet(kvstore, key->bytes, key->size);
+    RchkKVValue* value = rchkKVStoreGet(server.kvstore, key->bytes, key->size);
 
     if (value != NULL) {
         rchkAppendToReply(client, ARCHKE_TRUE, strlen(ARCHKE_TRUE));
@@ -151,7 +144,7 @@ void delCommand(RchkClient* client) {
     // 1.
     RchkArrayElement* key = &client->commandElements[1];
 
-    int deleted = rchkKVStoreDelete2(kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
+    int deleted = rchkKVStoreDelete2(server.kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
     rchkRemoveExpireTime(key->bytes, key->size);
 
     // 2.

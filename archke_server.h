@@ -45,6 +45,7 @@ typedef struct RchkServer {
 	int hz;
 	int shutdown;
 	RchkKVStore* expire; /* stores when keys are supposed to expire */
+	RchkKVStore* kvstore; /* stores data */
 } RchkServer;
 
 extern RchkServer server;

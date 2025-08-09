@@ -30,14 +30,29 @@ RchkServer server; // Global server config
 void setupSignalHandlers(void);
 
 void rchkServerInit() {
+	char* errorMessage = NULL;
+
 	server.hz = ARCHKE_SERVER_CRON_DEFAULT_HZ;
 	server.shutdown = ARCHKE_SERVER_NOT_SHUTDOWN;
+	server.kvstore = rchkKVStoreNew();
+	if (server.kvstore == NULL) {
+		errorMessage = "Db keystore creation failed";
+		goto err;
+	}
 	server.expire = rchkKVStoreNew();
 	if (server.expire == NULL) {
-		rchkExitFailure("Db keystore expire creation failed");
+		errorMessage = "Db keystore expire creation failed";
+		goto err;
 	}
 
 	setupSignalHandlers();
+
+	return;
+err:
+	if (server.kvstore != NULL) { rchkKVStoreFree(server.kvstore); }
+	if (server.expire != NULL) { rchkKVStoreFree(server.expire); }
+
+	rchkExitFailure(errorMessage);
 }
 
 RchkClient* rchkClientNew(int fd) {
