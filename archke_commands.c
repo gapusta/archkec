@@ -25,8 +25,6 @@ void initCommands(RchkKVStore* commands) {
     rchkKVStorePut(commands, "SHUTDOWN",  strlen("SHUTDOWN"),  shutdownCommand, -1);
 }
 
-RchkKVStore* getCommands() { return server.commands; }
-
 /*
     Helper function. Used when key deletion happens to free memory from key and value
 */

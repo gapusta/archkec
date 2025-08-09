@@ -100,13 +100,11 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 			return;
 		}
 
-		// fetch the command from command store
-		RchkKVStore* commands = getCommands();
-
 		char* commandName = client->commandElements[0].bytes;
 		int commandNameSize = client->commandElements[0].size;
 
-		RchkKVValue* cmd = rchkKVStoreGet(commands, commandName, commandNameSize);
+		// fetch the command from command store
+		RchkKVValue* cmd = rchkKVStoreGet(server.commands, commandName, commandNameSize);
 
 		void (*command) (RchkClient*) = cmd->value;
 

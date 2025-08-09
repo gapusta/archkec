@@ -10,8 +10,6 @@
 
 void initCommands(RchkKVStore* commands);
 
-RchkKVStore* getCommands();
-
 // Commands
 
 void echoCommand(RchkClient* client);
