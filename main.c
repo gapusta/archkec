@@ -10,7 +10,6 @@ int main(void) {
 	// server initialization
 	rchkServerInit();
 	initKvstore();
-	rchkInitExpire();
 	initCommands();
 
 	// create socket, open it and make it listen on port

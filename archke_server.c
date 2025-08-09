@@ -32,6 +32,10 @@ void setupSignalHandlers(void);
 void rchkServerInit() {
 	server.hz = ARCHKE_SERVER_CRON_DEFAULT_HZ;
 	server.shutdown = ARCHKE_SERVER_NOT_SHUTDOWN;
+	server.expire = rchkKVStoreNew();
+	if (server.expire == NULL) {
+		rchkExitFailure("Db keystore expire creation failed");
+	}
 
 	setupSignalHandlers();
 }

@@ -2,6 +2,7 @@
 #define ARCHKE_SERVER
 
 #include "archke_event_loop.h"
+#include "archke_kvstore.h"
 
 #define ARCHKE_BSAR_ERROR_EXPECTED_START_SIGN -1
 #define ARCHKE_BSAR_ERROR_EXPECTED_ELEMENT_START_SIGN -2
@@ -43,6 +44,7 @@ typedef struct RchkClient {
 typedef struct RchkServer {
 	int hz;
 	int shutdown;
+	RchkKVStore* expire; /* stores when keys are supposed to expire */
 } RchkServer;
 
 extern RchkServer server;

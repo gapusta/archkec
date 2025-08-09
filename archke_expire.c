@@ -7,15 +7,6 @@
 #include "archke_error.h"
 #include "archke_time.h"
 
-RchkKVStore* expire; // stores when keys are supposed to expire
-
-void rchkInitExpire() {
-    expire = rchkKVStoreNew();
-    if (expire == NULL) {
-        rchkExitFailure("Db keystore expire creation failed");
-    }
-}
-
 /*
     Helper function. Used when key deletion happens to free memory expiration date
 */
@@ -34,7 +25,7 @@ int rchkSetExpireTime(char* key, int keySize, uint64_t timeout) {
 
     *when = now + timeout;
 
-    if (rchkKVStorePut(expire, keyDup, keySize, when, -1) < 0) {
+    if (rchkKVStorePut(server.expire, keyDup, keySize, when, -1) < 0) {
         // TODO: write better error error handling
         rchkExitFailure("'set' operation failed");
     }
@@ -43,11 +34,11 @@ int rchkSetExpireTime(char* key, int keySize, uint64_t timeout) {
 }
 
 void rchkRemoveExpireTime(char* key, int keySize) {
-    rchkKVStoreDelete2(expire, key, keySize, rchkDelExpireValue);
+    rchkKVStoreDelete2(server.expire, key, keySize, rchkDelExpireValue);
 }
 
 int rchkIsExpired(char* key, int keySize) {
-    RchkKVValue* el = rchkKVStoreGet(expire, key, keySize);
+    RchkKVValue* el = rchkKVStoreGet(server.expire, key, keySize);
     if (el == NULL) {
         return 0;
     }
