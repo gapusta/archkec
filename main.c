@@ -9,7 +9,7 @@
 int main(void) {
 	// server initialization
 	rchkServerInit();
-	initCommands();
+	initCommands(server.commands);
 
 	// create socket, open it and make it listen on port
 	int serverSocketFd = rchkServerSocketNew(9999);

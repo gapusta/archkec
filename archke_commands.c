@@ -16,14 +16,7 @@
 #define ARCHKE_FALSE "#f\r\n"
 
 // TODO: kvstore is not supposed to be here
-RchkKVStore* commands;
-
-void initCommands() {
-    commands = rchkKVStoreNew();
-    if (commands == NULL) {
-        rchkExitFailure("Commands table creation failed");
-    }
-
+void initCommands(RchkKVStore* commands) {
     rchkKVStorePut(commands, "ECHO", strlen("ECHO"), echoCommand, -1);
     rchkKVStorePut(commands, "SET",  strlen("SET"),  setCommand, -1);
     rchkKVStorePut(commands, "GET",  strlen("GET"),  getCommand, -1);
@@ -32,7 +25,7 @@ void initCommands() {
     rchkKVStorePut(commands, "SHUTDOWN",  strlen("SHUTDOWN"),  shutdownCommand, -1);
 }
 
-RchkKVStore* getCommands() { return commands; }
+RchkKVStore* getCommands() { return server.commands; }
 
 /*
     Helper function. Used when key deletion happens to free memory from key and value

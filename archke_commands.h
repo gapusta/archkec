@@ -8,7 +8,7 @@
     Command prototype is [ void cmd(RchkClient* client) ]
 */
 
-void initCommands();
+void initCommands(RchkKVStore* commands);
 
 RchkKVStore* getCommands();
 

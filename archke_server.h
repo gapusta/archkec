@@ -44,8 +44,9 @@ typedef struct RchkClient {
 typedef struct RchkServer {
 	int hz;
 	int shutdown;
-	RchkKVStore* expire; /* stores when keys are supposed to expire */
 	RchkKVStore* kvstore; /* stores data */
+	RchkKVStore* commands; /* stores executable commands (e.g. 'SET', 'GET') */
+	RchkKVStore* expire; /* stores when keys are supposed to expire */
 } RchkServer;
 
 extern RchkServer server;
@@ -53,7 +54,7 @@ extern RchkServer server;
 void rchkServerInit();
 
 RchkClient* rchkClientNew(int fd);
-void rchkClientReset(RchkClient* client); // reseting client after each command
+void rchkClientReset(RchkClient* client); // resets client after each command
 void rchkClientResetInputOnly(RchkClient* client, int bytesProcessed);
 void rchkClientFree(RchkClient* client);
 
@@ -64,7 +65,7 @@ char* rchkDuplicate(const char* bytes, int size);
 void  rchkFreeDuplicate(char* bytes, int size);
 
 int rchkAppendToReply(RchkClient* client, char* data, int dataSize);
-int rchkAppendIntegerToReply(RchkClient* client, int data); // turns integet to string and appends it to reply
+int rchkAppendIntegerToReply(RchkClient* client, int data); // turns integer to string and appends it to reply
 
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event);
 

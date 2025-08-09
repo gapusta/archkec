@@ -39,6 +39,11 @@ void rchkServerInit() {
 		errorMessage = "Db keystore creation failed";
 		goto err;
 	}
+	server.commands = rchkKVStoreNew();
+	if (server.commands == NULL) {
+		errorMessage = "Commands table creation failed";
+		goto err;
+	}
 	server.expire = rchkKVStoreNew();
 	if (server.expire == NULL) {
 		errorMessage = "Db keystore expire creation failed";
@@ -50,6 +55,7 @@ void rchkServerInit() {
 	return;
 err:
 	if (server.kvstore != NULL) { rchkKVStoreFree(server.kvstore); }
+	if (server.commands != NULL) { rchkKVStoreFree(server.commands); }
 	if (server.expire != NULL) { rchkKVStoreFree(server.expire); }
 
 	rchkExitFailure(errorMessage);
