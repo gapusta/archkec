@@ -21,6 +21,13 @@ struct RchkKVStore {
     rchkKVStoreHash* hash;
 };
 
+struct RchkKVStoreScanner {
+    RchkBucketNode** buckets;
+    int index; /* current bucket index */
+    RchkBucketNode* prev; /* previous element required for effective removal */
+    RchkBucketNode* current;
+};
+
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
     for (int i=0; i<targetSize; i++) {
@@ -193,3 +200,94 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
     free(store);
 }
 
+/* Scanner API implementation */
+
+static int rchkKVStoreScanGetNonEmptyBucket(RchkBucketNode** buckets, int start) {
+    for (int bucket=start; bucket<ARCHKE_BUCKETS; bucket++) {
+        if (buckets[bucket] != NULL) {
+            return bucket;
+        }
+    }
+
+    return ARCHKE_BUCKETS;
+}
+
+int rchkKVStoreScanIsDone(RchkKVStoreScanner* scanner) {
+    return scanner->current == NULL;
+}
+
+RchkKVStoreScanner* rchkKVStoreScanNew(RchkKVStore* store) {
+    RchkKVStoreScanner* scanner = malloc(sizeof(RchkKVStoreScanner));
+    if (scanner == NULL) {
+        return NULL;
+    }
+
+    scanner->buckets = store->buckets;
+    scanner->index = rchkKVStoreScanGetNonEmptyBucket(store->buckets, 0);
+    scanner->prev = NULL;
+    if (scanner->index < ARCHKE_BUCKETS) {
+        scanner->current = scanner->buckets[scanner->index];
+    } else {
+        scanner->current = NULL;
+    }
+
+    return scanner;
+}
+
+void rchkKVStoreScanFree(RchkKVStoreScanner* scanner) {
+    free(scanner);
+}
+
+void rchkKVStoreScanGet(RchkKVStoreScanner* scanner, RchkKVKeyValue* holder) {
+    RchkBucketNode* current = scanner->current;
+
+    holder->key = current->key;
+    holder->keySize = current->keySize;
+    holder->value = current->value->value;
+    holder->valueSize = current->value->size;
+}
+
+void rchkKVStoreScanMove(RchkKVStoreScanner* scanner) {
+    if (scanner->current == NULL) { return; }
+
+    if (scanner->current->next != NULL) {
+        scanner->prev = scanner->current;
+        scanner->current = scanner->current->next;
+        return;
+    }
+
+    // move to next bucket
+    scanner->index = rchkKVStoreScanGetNonEmptyBucket(scanner->buckets, scanner->index + 1);
+
+    if (scanner->index >= ARCHKE_BUCKETS) {
+        scanner->prev = scanner->current;
+        scanner->current = NULL;
+    } else {
+        scanner->prev = NULL;
+        scanner->current = scanner->buckets[scanner->index];
+    }
+}
+
+// Deletes current element
+void rchkKVStoreScanDelete(RchkKVStoreScanner* scanner, rchkKVStoreFreeKeyValue* freeKeyValue) {
+    if (scanner->current == NULL) { return; }
+
+    RchkBucketNode* current = scanner->current;
+
+    // remove from bucket
+    if (scanner->prev == NULL) {
+        scanner->buckets[scanner->index] = current->next;
+    } else {
+        scanner->prev->next = current->next;
+    }
+
+    // remove from scanner
+    scanner->current = current->next;
+
+    // remove from existence
+    if (freeKeyValue != NULL) {
+        freeKeyValue(current->key, current->keySize, current->value->value, current->value->size);
+    }
+    free(current->value);
+    free(current);
+}

@@ -4,6 +4,8 @@
 #include <signal.h>
 #include "archke_server.h"
 #include "archke_error.h"
+#include "archke_kvstore.h"
+#include "archke_expire.h"
 
 #define	SIGINT		2	/* Interactive attention signal.  */
 #define	SIGTERM		15	/* Termination request.  */
@@ -352,6 +354,20 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	if (server.shutdown) {
 		// TODO: close listening socket? (Apparently this allows faster restarts)
 		exit(0);
+	}
+
+	// run active expire
+	RchkKVStoreScanner* scanner = rchkKVStoreScanNew(server.kvstore);
+	RchkKVKeyValue current;
+	while (!rchkKVStoreScanIsDone(scanner)) {
+		rchkKVStoreScanGet(scanner, &current);
+
+		if (rchkIsExpired(current.key, current.keySize)) {
+			rchkKVStoreScanDelete(scanner, NULL);
+			rchkRemoveExpireTime(current.key, current.keySize);
+		} else {
+			rchkKVStoreScanMove(scanner);
+		}
 	}
 
 	return 1000/server.hz;
