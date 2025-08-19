@@ -349,13 +349,15 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	while (!rchkKVStoreScanIsDone(scanner)) {
 		rchkKVStoreScanGet(scanner, &current);
 
-		if (rchkIsExpired(current.key, current.keySize)) {
-			rchkKVStoreScanDelete(scanner, rchkDelFreeKeyValue);
-			rchkRemoveExpireTime(current.key, current.keySize);
-		} else {
+		if (!rchkIsExpired(current.key, current.keySize)) {
 			rchkKVStoreScanMove(scanner);
+			continue;
 		}
+
+		rchkKVStoreScanDelete(scanner, rchkDelFreeKeyValue);
+		rchkRemoveExpireTime(current.key, current.keySize);
 	}
+	rchkKVStoreScanFree(scanner);
 
 	return 1000/server.hz;
 }
