@@ -6,6 +6,7 @@
 #include "archke_error.h"
 #include "archke_kvstore.h"
 #include "archke_expire.h"
+#include "archke_memory.h"
 
 #define	SIGINT		2	/* Interactive attention signal.  */
 #define	SIGTERM		15	/* Termination request.  */
@@ -167,20 +168,6 @@ void rchkClientFree(RchkClient* client) {
     free(client->commandElements);
     free(client->responseElements);
     free(client);
-}
-
-char* rchkDuplicate(const char* bytes, int size) {
-	void* dup = malloc(size);
-    if (dup == NULL) {
-        // TODO: write better error error handling
-        rchkExitFailure("duplication operation failed: malloc");
-    }
-	memcpy(dup, bytes, size);
-    return dup;
-}
-
-void rchkFreeDuplicate(char* bytes, int size) {
-	free(bytes);
 }
 
 int rchkAppendToReply(RchkClient* client, char* data, int dataSize) {
@@ -363,7 +350,7 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 		rchkKVStoreScanGet(scanner, &current);
 
 		if (rchkIsExpired(current.key, current.keySize)) {
-			rchkKVStoreScanDelete(scanner, NULL);
+			rchkKVStoreScanDelete(scanner, rchkDelFreeKeyValue);
 			rchkRemoveExpireTime(current.key, current.keySize);
 		} else {
 			rchkKVStoreScanMove(scanner);

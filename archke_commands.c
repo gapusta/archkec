@@ -6,6 +6,7 @@
 #include "archke_error.h"
 #include "archke_time.h"
 #include "archke_expire.h"
+#include "archke_memory.h"
 
 #define ARCHKE_SIMPLE_STRING_PREFIX "+"
 #define ARCHKE_BINARY_STRING_PREFIX "$"
@@ -23,14 +24,6 @@ void initCommands(RchkKVStore* commands) {
     rchkKVStorePut(commands, "DEL",  strlen("DEL"),  delCommand, -1);
     rchkKVStorePut(commands, "EXISTS",  strlen("EXISTS"),  existsCommand, -1);
     rchkKVStorePut(commands, "SHUTDOWN",  strlen("SHUTDOWN"),  shutdownCommand, -1);
-}
-
-/*
-    Helper function. Used when key deletion happens to free memory from key and value
-*/
-void rchkDelFreeKeyValue(char* key, int keySize, void* value, int valueSize) {
-    rchkFreeDuplicate(key, keySize);
-    rchkFreeDuplicate(value, valueSize);
 }
 
 /*

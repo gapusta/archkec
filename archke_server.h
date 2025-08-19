@@ -61,9 +61,6 @@ void rchkClientFree(RchkClient* client);
 int rchkProcessReadBuffer(RchkClient* client);
 int rchkIsCompleteCommandReceived(RchkClient* client);
 
-char* rchkDuplicate(const char* bytes, int size);
-void  rchkFreeDuplicate(char* bytes, int size);
-
 int rchkAppendToReply(RchkClient* client, char* data, int dataSize);
 int rchkAppendIntegerToReply(RchkClient* client, int data); // turns integer to string and appends it to reply
 

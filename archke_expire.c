@@ -5,6 +5,7 @@
 #include "archke_server.h"
 #include "archke_kvstore.h"
 #include "archke_error.h"
+#include "archke_memory.h"
 #include "archke_time.h"
 
 /*
