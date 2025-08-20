@@ -276,24 +276,17 @@ void rchkKVStoreScanDelete(RchkKVStoreScanner* scanner, rchkKVStoreFreeKeyValue*
     RchkBucketNode* prev = scanner->prev;
     RchkBucketNode* current = scanner->current;
 
-    if (current->next == NULL) {
-        // move to next bucket
-        rchkKVStoreScanMove(scanner);
-        // remove from table
-        if (prev != NULL) {
-            prev->next = NULL;
-        } else {
-            scanner->buckets[index] = NULL;
-        }
+    // move to next node
+    rchkKVStoreScanMove(scanner);
+
+    // remove from scanner
+    scanner->prev = prev;
+
+    // remove from table
+    if (prev == NULL) {
+        scanner->buckets[index] = current->next;
     } else {
-        // remove from table
-        if (prev == NULL) {
-            scanner->buckets[scanner->index] = current->next;
-        } else {
-            prev->next = current->next;
-        }
-        // remove from scanner
-        scanner->current = current->next;
+        prev->next = current->next;
     }
 
     // remove from existence
