@@ -12,7 +12,7 @@ typedef struct RchkKVValue {
 } RchkKVValue;
 
 typedef struct RchkKVKeyValue {
-    void* key;
+    char* key;
     int keySize;
     void* value;
     int valueSize;

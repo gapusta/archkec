@@ -354,12 +354,18 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 			continue;
 		}
 
-		rchkKVStoreScanDelete(scanner, rchkDelFreeKeyValue);
-		rchkRemoveExpireTime(current.key, current.keySize);
-
+		// FIXME: printing expired key must also appear before operation 2. because memory current.key points to gets freed
 		// char buffer[256] = { 0 };
-		// snprintf(buffer, current.keySize + 1, "%s", (char*) current.key);
+		// for (int i=0; i<current.keySize; i++) {
+		// 	buffer[i] = current.key[i];
+		// }
+		// buffer[current.keySize] = '\0';
+		//
 		// printf("Key expired [ key : %s, key size : %i ]\n", buffer, current.keySize);
+
+		// FIXME: order of operations 1. and 2. are important - otherwise it will not work
+		rchkRemoveExpireTime(current.key, current.keySize); // 1.
+		rchkKVStoreScanDelete(scanner, rchkDelFreeKeyValue); // 2.
 	}
 	rchkKVStoreScanFree(scanner);
 
