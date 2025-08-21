@@ -373,6 +373,12 @@ static uint64_t testHash(const char* target, int targetSize) {
     if (strcmp(target, "k4") == 0) return 0;
     if (strcmp(target, "k5") == 0) return 1;
     if (strcmp(target, "k6") == 0) return 2;
+    if (strcmp(target, "k7") == 0) return 0;
+    if (strcmp(target, "k8") == 0) return 1;
+    if (strcmp(target, "k9") == 0) return 2;
+    if (strcmp(target, "k10") == 0) return 0;
+    if (strcmp(target, "k11") == 0) return 1;
+    if (strcmp(target, "k12") == 0) return 2;
 
     return 3;
 }
@@ -431,30 +437,30 @@ int contains(char** list, int size, char* value) {
     return 0;
 }
 
-void testDeletion(char** all, int allSize, char** delete, int deleteSize) {
+void testDeletion(char** keys, int keysSize, char** keysToDelete, int keysToDeleteSize) {
     RchkKVStore* store = rchkKVStoreNew2(testHash);
-
     rchkAssertNotNull(store, "store");
 
-    for (int i=0; i<allSize; i++) {
-        char* key = all[i];
-        char* value = "xxx";
+    // Put all keys into the hash table
+    for (int i=0; i<keysSize; i++) {
+        char* key = keys[i];
         int keySize = strlen(key);
-        int valueSize = strlen(value);
 
-        rchkAssertEqualsInt(0, rchkKVStorePut(store, key, keySize, value, valueSize), "put");
+        int operationResult = rchkKVStorePut(store, key, keySize, "xxx", strlen("xxx"));
+
+        rchkAssertEqualsInt(0, operationResult, "put");
     }
 
     // Scanner init
     RchkKVStoreScanner* scanner = rchkKVStoreScanNew(store);
-
     rchkAssertNotNull(scanner, "scanner");
 
+    // delete keys to delete
     RchkKVKeyValue current;
     while (!rchkKVStoreScanIsDone(scanner)) {
         rchkKVStoreScanGet(scanner, &current);
 
-        if (contains(delete, deleteSize, current.key)) {
+        if (contains(keysToDelete, keysToDeleteSize, current.key)) {
             rchkKVStoreScanDelete(scanner, NULL);
         } else {
             rchkKVStoreScanMove(scanner);
@@ -462,10 +468,10 @@ void testDeletion(char** all, int allSize, char** delete, int deleteSize) {
     }
     rchkKVStoreScanFree(scanner);
 
-    for (int i=0; i<allSize; i++) {
-        char* key = all[i];
+    for (int i=0; i<keysSize; i++) {
+        char* key = keys[i];
 
-        if (contains(delete, deleteSize, key)) {
+        if (contains(keysToDelete, keysToDeleteSize, key)) {
             rchkAssertNull(rchkKVStoreGet(store, key, strlen(key)), "not exists check");
         } else {
             rchkAssertNotNull(rchkKVStoreGet(store, key, strlen(key)), "exists check");
@@ -553,6 +559,96 @@ void test16() {
     printf("Test #16 passed\n");
 }
 
+void test17() {
+    rchkTestSetName("Test #17");
+
+    char* all[] = { "k1", "k2" };
+    char* delete[] = { "k1" };
+    int allSize = sizeof(all) / sizeof(all[0]);
+    int deleteSize = sizeof(delete) / sizeof(delete[0]);
+
+    testDeletion(all, allSize, delete, deleteSize);
+
+    printf("Test #17 passed\n");
+}
+
+void test18() {
+    rchkTestSetName("Test #18");
+
+    char* all[] = { "k1", "k2" };
+    char* delete[] = { "k2" };
+    int allSize = sizeof(all) / sizeof(all[0]);
+    int deleteSize = sizeof(delete) / sizeof(delete[0]);
+
+    testDeletion(all, allSize, delete, deleteSize);
+
+    printf("Test #18 passed\n");
+}
+
+void test19() {
+    rchkTestSetName("Test #19");
+
+    // 0 -> k4->k1
+    // 1 -> k2
+    char* all[] = { "k1", "k2", "k4" };
+    char* delete[] = { "k1" };
+    int allSize = sizeof(all) / sizeof(all[0]);
+    int deleteSize = sizeof(delete) / sizeof(delete[0]);
+
+    testDeletion(all, allSize, delete, deleteSize);
+
+    printf("Test #19 passed\n");
+}
+
+void test20() {
+    rchkTestSetName("Test #20");
+
+    // 0 -> k4->k1
+    // 1 -> k2
+    char* all[] = { "k1", "k2", "k4" };
+    char* delete1[] = { "k1" };
+    char* delete2[] = { "k4" };
+    char* delete3[] = { "k2" };
+    int allSize = sizeof(all) / sizeof(all[0]);
+    int delete1Size = sizeof(delete1) / sizeof(delete1[0]);
+    int delete2Size = sizeof(delete2) / sizeof(delete2[0]);
+    int delete3Size = sizeof(delete3) / sizeof(delete3[0]);
+
+    testDeletion(all, allSize, delete1, delete1Size);
+    testDeletion(all, allSize, delete2, delete2Size);
+    testDeletion(all, allSize, delete3, delete3Size);
+
+    printf("Test #20 passed\n");
+}
+
+void test21() {
+    rchkTestSetName("Test #21");
+
+    // 0 -> "k10"->"k7"->"k4"->"k1",
+    // 1 -> NULL
+    // etc
+    char* all[] = { "k1", "k4", "k7", "k10" };
+    char* delete1[] = { "k1" };
+    char* delete2[] = { "k10" };
+    char* delete3[] = { "k7", "k10" };
+    char* delete4[] = { "k4", "k7", "k10" };
+    char* delete5[] = { "k7" };
+    int allSize = sizeof(all) / sizeof(all[0]);
+    int delete1Size = sizeof(delete1) / sizeof(delete1[0]);
+    int delete2Size = sizeof(delete2) / sizeof(delete2[0]);
+    int delete3Size = sizeof(delete3) / sizeof(delete3[0]);
+    int delete4Size = sizeof(delete4) / sizeof(delete4[0]);
+    int delete5Size = sizeof(delete5) / sizeof(delete5[0]);
+
+    testDeletion(all, allSize, delete1, delete1Size);
+    testDeletion(all, allSize, delete2, delete2Size);
+    testDeletion(all, allSize, delete3, delete3Size);
+    testDeletion(all, allSize, delete4, delete4Size);
+    testDeletion(all, allSize, delete5, delete5Size);
+
+    printf("Test #21 passed\n");
+}
+
 int main(void) {
     test1();
     test2();
@@ -570,6 +666,11 @@ int main(void) {
     test14();
     test15();
     test16();
+    test17();
+    test18();
+    test19();
+    test20();
+    test21();
     return 0;
 }
 

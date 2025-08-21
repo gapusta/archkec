@@ -356,6 +356,10 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 
 		rchkKVStoreScanDelete(scanner, rchkDelFreeKeyValue);
 		rchkRemoveExpireTime(current.key, current.keySize);
+
+		// char buffer[256] = { 0 };
+		// snprintf(buffer, current.keySize + 1, "%s", (char*) current.key);
+		// printf("Key expired [ key : %s, key size : %i ]\n", buffer, current.keySize);
 	}
 	rchkKVStoreScanFree(scanner);
 
