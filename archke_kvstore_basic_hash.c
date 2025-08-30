@@ -250,22 +250,26 @@ void rchkKVStoreScanGet(RchkKVStoreScanner* scanner, RchkKVKeyValue* holder) {
 void rchkKVStoreScanMove(RchkKVStoreScanner* scanner) {
     if (rchkKVStoreScanIsDone(scanner)) { return; }
 
+    // move to next node if it exists
     if (scanner->current->next != NULL) {
         scanner->prev = scanner->current;
         scanner->current = scanner->current->next;
         return;
     }
 
-    // move to next bucket
-    scanner->index = rchkKVStoreScanGetNonEmptyBucket(scanner->buckets, scanner->index + 1);
+    int nextBucketIndex = rchkKVStoreScanGetNonEmptyBucket(scanner->buckets, scanner->index + 1);
 
-    if (scanner->index >= ARCHKE_BUCKETS) {
-        scanner->prev = scanner->current;
-        scanner->current = NULL;
-    } else {
+    // move to next bucket if it exists
+    if (nextBucketIndex < ARCHKE_BUCKETS) {
+        scanner->index = nextBucketIndex;
         scanner->prev = NULL;
         scanner->current = scanner->buckets[scanner->index];
+        return;
     }
+
+    // terminate if no new node available
+    scanner->prev = scanner->current;
+    scanner->current = NULL;
 }
 
 // Deletes current element
