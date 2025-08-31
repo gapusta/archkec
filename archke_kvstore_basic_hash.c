@@ -276,6 +276,7 @@ void rchkKVStoreScanMove(RchkKVStoreScanner* scanner) {
 void rchkKVStoreScanDelete(RchkKVStoreScanner* scanner, rchkKVStoreFreeKeyValue* freeKeyValue) {
     if (rchkKVStoreScanIsDone(scanner)) { return; }
 
+    // save scanner current state
     int index = scanner->index;
     RchkBucketNode* prev = scanner->prev;
     RchkBucketNode* current = scanner->current;
@@ -283,8 +284,10 @@ void rchkKVStoreScanDelete(RchkKVStoreScanner* scanner, rchkKVStoreFreeKeyValue*
     // move to next node
     rchkKVStoreScanMove(scanner);
 
-    // remove from scanner
-    scanner->prev = prev;
+    // adjust scanner
+    if (current->next != NULL) {
+        scanner->prev = prev;
+    }
 
     // remove from table
     if (prev == NULL) {
