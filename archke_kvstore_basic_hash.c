@@ -200,7 +200,7 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
     free(store);
 }
 
-/* Scanner API implementation */
+/* Scanner implementation */
 
 static int rchkKVStoreScanGetNonEmptyBucket(RchkBucketNode** buckets, int start) {
     for (int bucket=start; bucket<ARCHKE_BUCKETS; bucket++) {
@@ -212,94 +212,26 @@ static int rchkKVStoreScanGetNonEmptyBucket(RchkBucketNode** buckets, int start)
     return ARCHKE_BUCKETS;
 }
 
-int rchkKVStoreScanIsDone(RchkKVStoreScanner* scanner) {
-    return scanner->current == NULL;
-}
-
-RchkKVStoreScanner* rchkKVStoreScanNew(RchkKVStore* store) {
-    RchkKVStoreScanner* scanner = malloc(sizeof(RchkKVStoreScanner));
-    if (scanner == NULL) {
-        return NULL;
+int rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData) {
+    if (cursor < 0 || cursor > ARCHKE_BUCKETS - 1) {
+        return -1;
     }
 
-    scanner->buckets = store->buckets;
-    scanner->index = rchkKVStoreScanGetNonEmptyBucket(store->buckets, 0);
-    scanner->prev = NULL;
-    if (scanner->index < ARCHKE_BUCKETS) {
-        scanner->current = scanner->buckets[scanner->index];
-    } else {
-        scanner->current = NULL;
+    int start = cursor == 0 ? 0 : cursor + 1;
+    int bucket = rchkKVStoreScanGetNonEmptyBucket(store->buckets, start);
+
+    if (bucket == ARCHKE_BUCKETS) {
+        return 0;
     }
 
-    return scanner;
-}
+    RchkBucketNode* current;
+    RchkBucketNode* next;
+    current = store->buckets[bucket];
+    do {
+        next = current->next;
+        callback(current->key, current->keySize, current->value->value, current->value->size, callbackData);
+        current = next;
+    } while (current != NULL);
 
-void rchkKVStoreScanFree(RchkKVStoreScanner* scanner) {
-    free(scanner);
-}
-
-void rchkKVStoreScanGet(RchkKVStoreScanner* scanner, RchkKVKeyValue* holder) {
-    RchkBucketNode* current = scanner->current;
-
-    holder->key = current->key;
-    holder->keySize = current->keySize;
-    holder->value = current->value->value;
-    holder->valueSize = current->value->size;
-}
-
-void rchkKVStoreScanMove(RchkKVStoreScanner* scanner) {
-    if (rchkKVStoreScanIsDone(scanner)) { return; }
-
-    // move to next node if it exists
-    if (scanner->current->next != NULL) {
-        scanner->prev = scanner->current;
-        scanner->current = scanner->current->next;
-        return;
-    }
-
-    int nextBucketIndex = rchkKVStoreScanGetNonEmptyBucket(scanner->buckets, scanner->index + 1);
-
-    // move to next bucket if it exists
-    if (nextBucketIndex < ARCHKE_BUCKETS) {
-        scanner->index = nextBucketIndex;
-        scanner->prev = NULL;
-        scanner->current = scanner->buckets[scanner->index];
-        return;
-    }
-
-    // terminate if no new node available
-    scanner->prev = scanner->current;
-    scanner->current = NULL;
-}
-
-// Deletes current element
-void rchkKVStoreScanDelete(RchkKVStoreScanner* scanner, rchkKVStoreFreeKeyValue* freeKeyValue) {
-    if (rchkKVStoreScanIsDone(scanner)) { return; }
-
-    // save scanner current state
-    int index = scanner->index;
-    RchkBucketNode* prev = scanner->prev;
-    RchkBucketNode* current = scanner->current;
-
-    // move to next node
-    rchkKVStoreScanMove(scanner);
-
-    // adjust scanner
-    if (current->next != NULL) {
-        scanner->prev = prev;
-    }
-
-    // remove from table
-    if (prev == NULL) {
-        scanner->buckets[index] = current->next;
-    } else {
-        prev->next = current->next;
-    }
-
-    // remove from existence
-    if (freeKeyValue != NULL) {
-        freeKeyValue(current->key, current->keySize, current->value->value, current->value->size);
-    }
-    free(current->value);
-    free(current);
+    return bucket;
 }

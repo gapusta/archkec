@@ -337,37 +337,28 @@ void setupSignalHandlers(void) {
 	sigaction(SIGINT, &act, NULL);
 }
 
+// void printx(char* key, int keySize, void* value, int valueSize, void* callbackData) {
+// 	char buffer[256] = { 0 };
+// 	for (int i=0; i<keySize; i++) {
+// 		buffer[i] = key[i];
+// 	}
+// 	buffer[keySize] = '\0';
+//
+// 	printf("Key expired [ key : %s, key size : %i ]\n", buffer, keySize);
+// }
+
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	if (server.shutdown) {
 		// TODO: close listening socket? (Apparently this allows faster restarts)
 		exit(0);
 	}
 
-	// run active expire
-	RchkKVStoreScanner* scanner = rchkKVStoreScanNew(server.kvstore);
-	RchkKVKeyValue current;
-	while (!rchkKVStoreScanIsDone(scanner)) {
-		rchkKVStoreScanGet(scanner, &current);
-
-		if (!rchkIsExpired(current.key, current.keySize)) {
-			rchkKVStoreScanMove(scanner);
-			continue;
-		}
-
-		// FIXME: printing expired key must also appear before operation 2. because memory current.key points to gets freed
-		// char buffer[256] = { 0 };
-		// for (int i=0; i<current.keySize; i++) {
-		// 	buffer[i] = current.key[i];
-		// }
-		// buffer[current.keySize] = '\0';
-		//
-		// printf("Key expired [ key : %s, key size : %i ]\n", buffer, current.keySize);
-
-		// FIXME: order of operations 1. and 2. are important - otherwise it will not work
-		rchkRemoveExpireTime(current.key, current.keySize); // 1.
-		rchkKVStoreScanDelete(scanner, rchkDelFreeKeyValue); // 2.
-	}
-	rchkKVStoreScanFree(scanner);
+	// TODO: Here implement full kv store scan + active expire
+	// int cursor = 0;
+	// do {
+	// 	printf("\n");
+	// 	cursor = rchkKVStoreScan(server.kvstore, cursor, printx, NULL);
+	// } while (cursor > 0);
 
 	return 1000/server.hz;
 }
