@@ -213,25 +213,23 @@ static int rchkKVStoreScanGetNonEmptyBucket(RchkBucketNode** buckets, int start)
 }
 
 int rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData) {
-    if (cursor < 0 || cursor > ARCHKE_BUCKETS - 1) {
+    if (cursor < 0 || cursor > ARCHKE_BUCKETS) {
+        // invalid cursor value
         return -1;
     }
 
-    int start = cursor == 0 ? 0 : cursor + 1;
-    int bucket = rchkKVStoreScanGetNonEmptyBucket(store->buckets, start);
-
+    int bucket = rchkKVStoreScanGetNonEmptyBucket(store->buckets, cursor);
     if (bucket == ARCHKE_BUCKETS) {
         return 0;
     }
 
-    RchkBucketNode* current;
     RchkBucketNode* next;
-    current = store->buckets[bucket];
+    RchkBucketNode* current = store->buckets[bucket];;
     do {
         next = current->next;
         callback(current->key, current->keySize, current->value->value, current->value->size, callbackData);
         current = next;
     } while (current != NULL);
 
-    return bucket;
+    return bucket + 1;
 }
