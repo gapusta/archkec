@@ -7,6 +7,7 @@
 #include "archke_kvstore.h"
 #include "archke_expire.h"
 #include "archke_memory.h"
+#include "archke_time.h"
 
 #define	SIGINT		2	/* Interactive attention signal.  */
 #define	SIGTERM		15	/* Termination request.  */
@@ -337,15 +338,26 @@ void setupSignalHandlers(void) {
 	sigaction(SIGINT, &act, NULL);
 }
 
-// void printx(char* key, int keySize, void* value, int valueSize, void* callbackData) {
-// 	char buffer[256] = { 0 };
-// 	for (int i=0; i<keySize; i++) {
-// 		buffer[i] = key[i];
-// 	}
-// 	buffer[keySize] = '\0';
-//
-// 	printf("Key expired [ key : %s, key size : %i ]\n", buffer, keySize);
-// }
+
+void activeExpirePrintKeyDelete(char* key, int keySize) {
+	char buffer[keySize + 1];
+	memcpy(buffer, key, keySize);
+	buffer[keySize] = '\0';
+
+	printf("Key expired [ key : %s, key size : %i ]\n", buffer, keySize);
+}
+
+void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, void* callbackData) {
+	uint64_t now = getMonotonicUs();
+	uint64_t* when = value;
+
+	if (now <= *when) { return; }
+
+	activeExpirePrintKeyDelete(key, keySize);
+
+	rchkKVStoreDelete(server.kvstore, key, keySize);
+	rchkRemoveExpireTime(key, keySize);
+}
 
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	if (server.shutdown) {
@@ -353,12 +365,12 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 		exit(0);
 	}
 
-	// TODO: Here implement full kv store scan + active expire
-	// int cursor = 0;
-	// do {
-	// 	printf("\n");
-	// 	cursor = rchkKVStoreScan(server.kvstore, cursor, printx, NULL);
-	// } while (cursor > 0);
+	// TODO: Active expiry needs testing
+	// TODO: Active expiry needs max runtime limit
+	int cursor = 0;
+	do {
+		cursor = rchkKVStoreScan(server.expire, cursor, activeExpiryCallback, NULL);
+	} while (cursor > 0);
 
 	return 1000/server.hz;
 }
