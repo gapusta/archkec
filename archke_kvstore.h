@@ -32,7 +32,7 @@ void         rchkKVStoreFree(RchkKVStore* store);
 void         rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue);
 
 /*
- * Used to iterate over the elements of a dictionary.
+ * Used to iterate over the elements of a kvstore.
  *
  * Iterating works the following way:
  *
