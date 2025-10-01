@@ -6,7 +6,6 @@
 #include "archke_error.h"
 #include "archke_kvstore.h"
 #include "archke_expire.h"
-#include "archke_memory.h"
 #include "archke_time.h"
 
 #define	SIGINT		2	/* Interactive attention signal.  */
@@ -353,7 +352,7 @@ void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, vo
 
 	if (now <= *when) { return; }
 
-	activeExpirePrintKeyDelete(key, keySize);
+	// activeExpirePrintKeyDelete(key, keySize);
 
 	rchkKVStoreDelete(server.kvstore, key, keySize);
 	rchkRemoveExpireTime(key, keySize);
