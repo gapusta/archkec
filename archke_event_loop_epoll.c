@@ -91,7 +91,7 @@ int rchkEventLoopRegisterTimeEvent(RchkEventLoop* eventLoop, long long milliseco
         return -1;
     }
 
-    te->when = getMonotonicUs() + milliseconds;
+    te->when = rchkGetMonotonicUs() + milliseconds;
     te->eventHandle = proc;
     te->next = eventLoop->timeEventHead;
 
@@ -125,7 +125,7 @@ static int getEarliestTimerOffset(RchkEventLoop* eventLoop) {
         te = te->next;
     }
 
-    const uint64_t now = getMonotonicUs();
+    const uint64_t now = rchkGetMonotonicUs();
     return (now >= earliest->when) ? 0 : ((int)(earliest->when - now));
 }
 
@@ -155,11 +155,11 @@ void rchkEventLoopMain(RchkEventLoop* eventLoop) {
 
         // Time events
 	    RchkTimeEvent* timeEvent = eventLoop->timeEventHead;
-	    uint64_t now = getMonotonicUs();
+	    uint64_t now = rchkGetMonotonicUs();
 	    while (timeEvent) {
 	        if (now >= timeEvent->when) {
 	            int milliseconds = timeEvent->eventHandle(eventLoop, timeEvent);
-                now = getMonotonicUs();
+                now = rchkGetMonotonicUs();
 	            timeEvent->when = now + milliseconds;
 	        }
 	        timeEvent = timeEvent->next;

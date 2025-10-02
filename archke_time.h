@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-uint64_t getMonotonicUs(void);
+uint64_t rchkGetMonotonicUs(void);
 
 #endif

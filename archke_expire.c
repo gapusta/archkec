@@ -22,7 +22,7 @@ int rchkSetExpireTime(char* key, int keySize, uint64_t timeout) {
         rchkExitFailure("PANIC: memory allocation failed");
     }
     char* keyDup = rchkDuplicate(key, keySize);
-    uint64_t now = getMonotonicUs();
+    uint64_t now = rchkGetMonotonicUs();
 
     *when = now + timeout;
 
@@ -43,7 +43,7 @@ int rchkIsExpired(char* key, int keySize) {
     if (el == NULL) {
         return 0;
     }
-    uint64_t now = getMonotonicUs();
+    uint64_t now = rchkGetMonotonicUs();
     uint64_t* when = el->value;
 
     if (now > *when) {

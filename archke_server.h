@@ -4,6 +4,8 @@
 #include "archke_event_loop.h"
 #include "archke_kvstore.h"
 
+#define ARCHKE_ACTIVE_EXPIRY_TIME_PERCENT 25
+
 #define ARCHKE_BSAR_ERROR_EXPECTED_START_SIGN -1
 #define ARCHKE_BSAR_ERROR_EXPECTED_ELEMENT_START_SIGN -2
 
@@ -44,6 +46,7 @@ typedef struct RchkClient {
 typedef struct RchkServer {
 	int hz;
 	int shutdown;
+	int cursor; /* active expire scan cursor */
 	RchkKVStore* kvstore; /* stores data */
 	RchkKVStore* commands; /* stores executable commands (e.g. 'SET', 'GET') */
 	RchkKVStore* expire; /* stores when keys are supposed to expire */

@@ -12,9 +12,10 @@
 #define	SIGTERM		15	/* Termination request.  */
 
 // #define ARCHKE_SERVER_CRON_DEFAULT_HZ 10
-#define ARCHKE_SERVER_CRON_DEFAULT_HZ 1
+#define ARCHKE_SERVER_CRON_DEFAULT_HZ 5
 #define ARCHKE_SERVER_NOT_SHUTDOWN 0
 #define ARCHKE_SERVER_SHUTDOWN 1
+#define ARCHKE_SERVER_ACTIVE_EXP_CURSOR_INIT 0
 
 #define ARCHKE_ELEMENTS_ARRAY_MAX_SIZE 256
 #define ARCHKE_ELEMENTS_MEMORY_MAX_SIZE 1024
@@ -28,6 +29,10 @@
 
 #define ARCHKE_MAX_BINARY_SIZE_CHARS 128
 
+typedef struct RchkActiveExpiryScanData {
+	u_int64_t now;
+} RchkActiveExpiryScanData;
+
 RchkServer server; // Global server config
 
 void setupSignalHandlers(void);
@@ -35,8 +40,11 @@ void setupSignalHandlers(void);
 void rchkServerInit() {
 	char* errorMessage = NULL;
 
+	// serverCron() will be called 'ARCHKE_SERVER_CRON_DEFAULT_HZ' times per second if no
+	// request will come and if it will finish in 1000/ARCHKE_SERVER_CRON_DEFAULT_HZ milliseconds each time of course
 	server.hz = ARCHKE_SERVER_CRON_DEFAULT_HZ;
 	server.shutdown = ARCHKE_SERVER_NOT_SHUTDOWN;
+	server.cursor = ARCHKE_SERVER_ACTIVE_EXP_CURSOR_INIT;
 	server.kvstore = rchkKVStoreNew();
 	if (server.kvstore == NULL) {
 		errorMessage = "Db keystore creation failed";
@@ -346,8 +354,10 @@ void activeExpirePrintKeyDelete(char* key, int keySize) {
 	printf("Key expired [ key : %s, key size : %i ]\n", buffer, keySize);
 }
 
-void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, void* callbackData) {
-	uint64_t now = getMonotonicUs();
+
+void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, void* privdata) {
+	RchkActiveExpiryScanData* data = privdata;
+	u_int64_t now = data->now;
 	uint64_t* when = value;
 
 	if (now <= *when) { return; }
@@ -364,12 +374,20 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 		exit(0);
 	}
 
-	// TODO: Active expiry needs testing
-	// TODO: Active expiry needs max runtime limit
-	int cursor = 0;
+	// Active expire scan
+	// TODO: Whole 'Active expire scan' feature requires testing
+	u_int64_t timeoffset = ARCHKE_ACTIVE_EXPIRY_TIME_PERCENT * (1000/server.hz)/100;
+	u_int64_t now = rchkGetMonotonicUs();
+	u_int64_t timelimit = now + timeoffset;
+
+	// printf("time offset: %lu\n", timeoffset);
+
+	RchkActiveExpiryScanData data = { .now = now };
+
 	do {
-		cursor = rchkKVStoreScan(server.expire, cursor, activeExpiryCallback, NULL);
-	} while (cursor > 0);
+		server.cursor = rchkKVStoreScan(server.expire, server.cursor, activeExpiryCallback, &data);
+		now = rchkGetMonotonicUs();
+	} while (server.cursor > 0 || now >= timelimit);
 
 	return 1000/server.hz;
 }
