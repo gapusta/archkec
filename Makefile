@@ -1,18 +1,35 @@
+CC=gcc
+SRC_FILES = $(wildcard *.c)
+LINUX_SRC_FILES = $(filter-out archke_event_loop_kqueue.c, $(SRC_FILES))
+FREE_BSD_SRC_FILES = $(filter-out archke_event_loop_epoll.c, $(SRC_FILES))
+
 .PHONY: clean cleand
 
-exe: $(wildcard *.c)
-	gcc -Wall -c $^
-	gcc *.o -o exe
+all: exe
+
+exe: $(LINUX_SRC_FILES)
+	$(CC) -Wall -c $^
+	$(CC) *.o -o exe
 	rm *.o
 
-exed: $(wildcard *.c)
-	gcc -Wall -c -g $^
-	gcc *.o -o exed
+exed: $(LINUX_SRC_FILES)
+	$(CC) -Wall -c -g $^
+	$(CC) *.o -o exed
+	rm *.o
+
+exe_freebsd: $(FREE_BSD_SRC_FILES)
+	$(CC) -Wall -c $^
+	$(CC) *.o -o exe
+	rm *.o
+
+exed_freebsd: $(FREE_BSD_SRC_FILES)
+	$(CC) -Wall -c -g $^
+	$(CC) *.o -o exed
 	rm *.o
 
 clean:
-	rm *.o exe
+	rm -f *.o exe
 
 cleand: 
-	rm *.o exed
+	rm -f *.o exed
 
