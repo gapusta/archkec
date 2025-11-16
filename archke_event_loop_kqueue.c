@@ -10,6 +10,17 @@
 #include "archke_error.h"
 #include "archke_time.h"
 
+static int kqueueUnregisterEvent(int eventLoopFd, int fromFd, RchkEvent* registeredEvent) {
+    struct kevent prevEvent;
+    if (registeredEvent->mask & ARCHKE_EVENT_LOOP_READ_EVENT) {
+        EV_SET(&prevEvent, fromFd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+    }
+    if (registeredEvent->mask & ARCHKE_EVENT_LOOP_WRITE_EVENT) {
+        EV_SET(&prevEvent, fromFd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    }
+    return kevent(eventLoopFd, &prevEvent, 1, NULL, 0, NULL);
+}
+
 RchkEventLoop* rchkEventLoopNew(int setsize) {
     RchkEventLoop* eventLoop = malloc(sizeof(RchkEventLoop));
     if (eventLoop == NULL) {
@@ -56,20 +67,29 @@ RchkEventLoop* rchkEventLoopNew(int setsize) {
 }
 
 int  rchkEventLoopRegisterIOEvent(RchkEventLoop* eventLoop, int fd, int mask, rchkHandleEvent* proc, RchkClientConfig* config) {
-    struct kevent kqueueEvent;
+    RchkEvent* event = &eventLoop->events[fd];
 
+    // 1. Remove previously listened event if required
+    if (event->mask != ARCHKE_EVENT_LOOP_NONE_EVENT) {
+        int result = kqueueUnregisterEvent(eventLoop->fd, fd, event);
+        if (result < 0) {
+            return -1;
+        }
+    }
+
+    // 2. register new event to listen
+    struct kevent newEvent;
     if (mask & ARCHKE_EVENT_LOOP_READ_EVENT) {
-        EV_SET(&kqueueEvent, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+        EV_SET(&newEvent, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
     }
     if (mask & ARCHKE_EVENT_LOOP_WRITE_EVENT) {
-        EV_SET(&kqueueEvent, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
+        EV_SET(&newEvent, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
     }
-    if (kevent(eventLoop->fd, &kqueueEvent, 1, NULL, 0, NULL) < 0) {
+    if (kevent(eventLoop->fd, &newEvent, 1, NULL, 0, NULL) < 0) {
         return -1;
     }
 
-    // 2. init additional event information
-    RchkEvent* event = &eventLoop->events[fd];
+    // 3. init additional event information
     event->mask = mask;
     if (mask & ARCHKE_EVENT_LOOP_READ_EVENT) { event->readEventHandle = proc; }
     if (mask & ARCHKE_EVENT_LOOP_WRITE_EVENT) { event->writeEventHandle = proc; }
@@ -94,12 +114,51 @@ int  rchkEventLoopRegisterTimeEvent(RchkEventLoop* eventLoop, long long millisec
     return 0;
 }
 
+void rchkEventLoopUnregister(RchkEventLoop* eventLoop, int fd) {
+    RchkEvent* event = &eventLoop->events[fd];
+
+    kqueueUnregisterEvent(eventLoop->fd, fd, event);
+
+    event->mask = ARCHKE_EVENT_LOOP_NONE_EVENT;
+    event->readEventHandle = NULL;
+    event->writeEventHandle = NULL;
+    event->clientData = NULL;
+    event->freeClientData = NULL;
+}
+
+static int setEarliestTimerOffset(RchkEventLoop* eventLoop, struct timespec* timespec) {
+    RchkTimeEvent *earliest = eventLoop->timeEventHead;
+    if (earliest == NULL) {
+        return -1;
+    }
+
+    RchkTimeEvent *te = earliest->next;
+    while (te) {
+        if (te->when < earliest->when) {
+            earliest = te;
+        }
+        te = te->next;
+    }
+
+    const uint64_t now = rchkGetMonotonicUs();
+    if (now >= earliest->when) {
+        timespec->tv_sec = 0;
+        timespec->tv_nsec = 0;
+    } else {
+        int delta = earliest->when - now;
+        timespec->tv_sec = delta / 1000;
+        timespec->tv_nsec = (delta % 1000) * 1000000;
+    }
+
+    return 0;
+}
+
 void rchkEventLoopMain(RchkEventLoop* eventLoop) {
     struct kevent* kqueueEvents = (struct kevent*) eventLoop->apiData;
     for(;;) {
-        // IO Events
-        struct timespec* timeout = NULL; // wait indefinitely
-        int nevents = kevent(eventLoop->fd, NULL, 0, kqueueEvents, eventLoop->setsize, timeout);
+        struct timespec timeout;
+        int timeset = setEarliestTimerOffset(eventLoop, &timeout);
+        int nevents = kevent(eventLoop->fd, NULL, 0, kqueueEvents, eventLoop->setsize, timeset == 0 ? &timeout : NULL);
         if (nevents == -1 && errno != EINTR) {
             rchkExitFailure("polling: kqueue wait");
             return;
@@ -131,25 +190,6 @@ void rchkEventLoopMain(RchkEventLoop* eventLoop) {
             timeEvent = timeEvent->next;
         }
     }
-}
-
-void rchkEventLoopUnregister(RchkEventLoop* eventLoop, int fd) {
-    RchkEvent* event = &eventLoop->events[fd];
-    struct kevent kqueueEvent;
-
-    if (event->mask & ARCHKE_EVENT_LOOP_READ_EVENT) {
-        EV_SET(&kqueueEvent, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-    }
-    if (event->mask & ARCHKE_EVENT_LOOP_WRITE_EVENT) {
-        EV_SET(&kqueueEvent, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-    }
-    kevent(eventLoop->fd, &kqueueEvent, 1, NULL, 0, NULL);
-
-    event->mask = ARCHKE_EVENT_LOOP_NONE_EVENT;
-    event->readEventHandle = NULL;
-    event->writeEventHandle = NULL;
-    event->clientData = NULL;
-    event->freeClientData = NULL;
 }
 
 void rchkEventLoopFree(RchkEventLoop* eventLoop) {

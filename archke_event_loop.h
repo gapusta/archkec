@@ -43,7 +43,12 @@ typedef struct RchkEventLoop {
 } RchkEventLoop;
 
 RchkEventLoop* rchkEventLoopNew(int setsize);
+
+/*
+ * Register an event. Previously registered events will be erased
+ */
 int  rchkEventLoopRegisterIOEvent(RchkEventLoop* eventLoop, int fd, int mask, rchkHandleEvent* proc, RchkClientConfig* config);
+
 int  rchkEventLoopRegisterTimeEvent(RchkEventLoop* eventLoop, long long milliseconds, rchkHandleTimeEvent* proc);
 void rchkEventLoopMain(RchkEventLoop* eventLoop); // main event loop
 void rchkEventLoopUnregister(RchkEventLoop* eventLoop, int fd);
