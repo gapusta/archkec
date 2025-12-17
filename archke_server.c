@@ -376,28 +376,29 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 
 	// Active expire scan
 	// TODO: Whole 'Active expire scan' feature requires testing
-	int iteration = 0;
-	u_int64_t timeoffset = ARCHKE_ACTIVE_EXPIRY_TIME_PERCENT * (1000/server.hz)/100;
-	u_int64_t now = rchkGetMonotonicUs();
-	u_int64_t timelimit = now + timeoffset;
-
-	RchkActiveExpiryScanData data = { .now = now };
-
-	// printf("time offset: %lu\n", timeoffset);
-
-	do {
-		iteration++;
-
-		server.cursor = rchkKVStoreScan(server.expire, server.cursor, activeExpiryCallback, &data);
-
-		/* check time limit every 16 iterations. */
-		if ((iteration & 0xf) == 0) {
-			now = rchkGetMonotonicUs();
-			if (now >= timelimit) {
-				break;
-			}
-		}
-	} while (server.cursor > 0);
+	// TODO: Active expire scan disabled until we are done with incremental rehashing
+	// int iteration = 0;
+	// u_int64_t timeoffset = ARCHKE_ACTIVE_EXPIRY_TIME_PERCENT * (1000/server.hz)/100;
+	// u_int64_t now = rchkGetMonotonicUs();
+	// u_int64_t timelimit = now + timeoffset;
+	//
+	// RchkActiveExpiryScanData data = { .now = now };
+	//
+	// // printf("time offset: %lu\n", timeoffset);
+	//
+	// do {
+	// 	iteration++;
+	//
+	// 	server.cursor = rchkKVStoreScan(server.expire, server.cursor, activeExpiryCallback, &data);
+	//
+	// 	/* check time limit every 16 iterations. */
+	// 	if ((iteration & 0xf) == 0) {
+	// 		now = rchkGetMonotonicUs();
+	// 		if (now >= timelimit) {
+	// 			break;
+	// 		}
+	// 	}
+	// } while (server.cursor > 0);
 
 	return 1000/server.hz;
 }

@@ -23,7 +23,7 @@ typedef void rchkKVStoreFreeKeyValue(char* key, int keySize, void* value, int va
 typedef void rchkKVStoreScanCallback(char* key, int keySize, void* value, int valueSize, void* callbackData);
 
 RchkKVStore* rchkKVStoreNew();
-RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash);
+RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash, int initialSize);
 int          rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int valueSize);
 RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize);
 int          rchkKVStoreDelete(RchkKVStore* store, char* key, int keySize);

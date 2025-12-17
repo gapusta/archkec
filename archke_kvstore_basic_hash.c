@@ -5,7 +5,7 @@
 
 // hash function link - https://benhoyt.com/writings/hash-table-in-c/
 
-#define ARCHKE_BUCKETS 1024
+#define ARCHKE_BUCKETS_INIT_SIZE 4
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
 
@@ -18,7 +18,10 @@ typedef struct RchkBucketNode {
 
 struct RchkKVStore {
     RchkBucketNode** buckets;
+    RchkBucketNode** buckets2; // holds new table during incremental rehashing
     rchkKVStoreHash* hash;
+    int size;
+    int used;
 };
 
 struct RchkKVStoreScanner {
@@ -38,26 +41,29 @@ static uint64_t _rchkHash(const char* target, int targetSize) {
 }
 
 RchkKVStore* rchkKVStoreNew() {
-    return rchkKVStoreNew2(NULL);
+    return rchkKVStoreNew2(NULL, ARCHKE_BUCKETS_INIT_SIZE);
 }
 
-RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash) {
+RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash, int initialSize) {
     RchkKVStore* new = malloc(sizeof(RchkKVStore));
     if (new == NULL) {
         return NULL;
     }
 
-    new->buckets = malloc(ARCHKE_BUCKETS * sizeof(RchkBucketNode*));
+    new->buckets = malloc(initialSize * sizeof(RchkBucketNode*));
     if (new->buckets == NULL) {
         free(new);
         return NULL;
     }
 
-    for (int i=0; i<ARCHKE_BUCKETS; i++) {
+    for (int i=0; i<initialSize; i++) {
         new->buckets[i] = NULL;
     }
 
+    new->buckets2 = NULL;
     new->hash = hash != NULL ? hash : _rchkHash;
+    new->size = initialSize;
+    new->used = 0;
 
     return new;
 }
@@ -86,7 +92,7 @@ next:
 }
 
 int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int valueSize) {
-    uint64_t index = store->hash(key, keySize) % ARCHKE_BUCKETS;
+    uint64_t index = store->hash(key, keySize) % store->size;
 
     RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
     if (node != NULL) {
@@ -114,12 +120,13 @@ int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int 
     new->next = store->buckets[index];
 
     store->buckets[index] = new;
+    store->used++;
 
     return 0;    
 }
 
 RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
-    uint64_t index = store->hash(key, keySize) % ARCHKE_BUCKETS;
+    uint64_t index = store->hash(key, keySize) % store->size;
 
     RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
     if (node != NULL) {
@@ -134,7 +141,7 @@ int rchkKVStoreDelete(RchkKVStore* store, char* key, int keySize) {
 }
 
 int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
-    uint64_t index = store->hash(key, keySize) % ARCHKE_BUCKETS;
+    uint64_t index = store->hash(key, keySize) % store->size;
 
     RchkBucketNode* first = store->buckets[index];
     RchkBucketNode* current = first;
@@ -168,6 +175,8 @@ next:
         free(current->value);
         free(current);
 
+        store->used--;
+
         return 1; // one element has been found and deleted
     }
 
@@ -182,7 +191,7 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
     RchkBucketNode* current;
     RchkBucketNode* next;
 
-    for (int i=0; i<ARCHKE_BUCKETS; i++) {
+    for (int i=0; i<store->size; i++) {
         current = store->buckets[i];
 
         while (current != NULL) {
@@ -202,24 +211,24 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
 
 /* Scanner implementation */
 
-static int rchkKVStoreScanGetNonEmptyBucket(RchkBucketNode** buckets, int start) {
-    for (int bucket=start; bucket<ARCHKE_BUCKETS; bucket++) {
-        if (buckets[bucket] != NULL) {
+static int rchkKVStoreScanGetNonEmptyBucket(RchkKVStore* store, int start) {
+    for (int bucket=start; bucket<store->size; bucket++) {
+        if (store->buckets[bucket] != NULL) {
             return bucket;
         }
     }
 
-    return ARCHKE_BUCKETS;
+    return store->size;
 }
 
 int rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData) {
-    if (cursor < 0 || cursor > ARCHKE_BUCKETS) {
+    if (cursor < 0 || cursor > store->size) {
         // invalid cursor value
         return -1;
     }
 
-    int bucket = rchkKVStoreScanGetNonEmptyBucket(store->buckets, cursor);
-    if (bucket == ARCHKE_BUCKETS) {
+    int bucket = rchkKVStoreScanGetNonEmptyBucket(store, cursor);
+    if (bucket == store->size) {
         return 0;
     }
 
