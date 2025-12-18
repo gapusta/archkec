@@ -50,7 +50,8 @@ void rchkServerInit() {
 		errorMessage = "Db keystore creation failed";
 		goto err;
 	}
-	server.commands = rchkKVStoreNew();
+	// TODO: right now 512 commands is max - fix it
+	server.commands = rchkKVStoreNew2(NULL, 512);
 	if (server.commands == NULL) {
 		errorMessage = "Commands table creation failed";
 		goto err;
@@ -368,6 +369,18 @@ void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, vo
 	rchkRemoveExpireTime(key, keySize);
 }
 
+void incrementalRehashing(RchkKVStore* kvstore, u_int64_t timeoffset) {
+	u_int64_t now = rchkGetMonotonicUs();
+	u_int64_t timelimit = now + timeoffset;
+	do {
+		if (!rchkKVStoreRehashActive(kvstore)) {
+			break;
+		}
+		rchkKVStoreRehashStep(kvstore);
+		now = rchkGetMonotonicUs();
+	} while (timelimit > now);
+}
+
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	if (server.shutdown) {
 		// TODO: close listening socket? (Apparently this allows faster restarts)
@@ -399,6 +412,11 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	// 		}
 	// 	}
 	// } while (server.cursor > 0);
+
+	// Rehashing
+	u_int64_t timeoffset = 2; // 2 milliseconds
+	incrementalRehashing(server.kvstore, timeoffset);
+	incrementalRehashing(server.expire, timeoffset);
 
 	return 1000/server.hz;
 }
