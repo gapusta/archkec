@@ -38,7 +38,7 @@ struct RchkKVStoreScanner {
 
 static int _rchkKVStoreExpandNeeded(RchkKVStore* store);
 
-static void _rchkKVStoreStartExpandIfNeeded(RchkKVStore* store);
+static void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store);
 
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
@@ -80,8 +80,8 @@ RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash, int initialSize) {
     return new;
 }
 
-RchkBucketNode* _rchkKVStoreSearch(RchkKVStore* store, uint64_t bucketIndex, char* key, int keySize) {
-    RchkBucketNode* node = store->buckets[bucketIndex];
+RchkBucketNode* _rchkKVStoreSearch(RchkBucketNode** buckets, uint64_t bucketIndex, char* key, int keySize) {
+    RchkBucketNode* node = buckets[bucketIndex];
     
 next:
     while(node != NULL) {
@@ -104,14 +104,30 @@ next:
 }
 
 int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int valueSize) {
-    uint64_t index = store->hash(key, keySize) % store->size;
+    RchkBucketNode** buckets = store->buckets;
+    int size = store->size;
+    uint64_t index = store->hash(key, keySize) % size;
 
-    RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
+    RchkBucketNode* node = _rchkKVStoreSearch(buckets, index, key, keySize);
     if (node != NULL) {
         RchkKVValue* found = node->value;
         found->value = value;
         found->size = valueSize;
         return 0;
+    }
+
+    if (rchkKVStoreRehashActive(store)) {
+        buckets = store->new;
+        size = store->newSize;
+        index = store->hash(key, keySize) % size;
+
+        node = _rchkKVStoreSearch(buckets, index, key, keySize);
+        if (node != NULL) {
+            RchkKVValue* found = node->value;
+            found->value = value;
+            found->size = valueSize;
+            return 0;
+        }
     }
 
     RchkKVValue* val = (RchkKVValue*) malloc(sizeof(RchkKVValue));
@@ -129,25 +145,73 @@ int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int 
     new->value = val;
     new->key = key;
     new->keySize = keySize;
-    new->next = store->buckets[index];
+    new->next = buckets[index];
 
-    store->buckets[index] = new;
+    buckets[index] = new;
     store->used++;
 
-    _rchkKVStoreStartExpandIfNeeded(store);
+    _rchkKVStoreStartExpansionIfNeeded(store);
 
     return 0;    
 }
 
 RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
     uint64_t index = store->hash(key, keySize) % store->size;
-
-    RchkBucketNode* node = _rchkKVStoreSearch(store, index, key, keySize);
+    RchkBucketNode* node = _rchkKVStoreSearch(store->buckets, index, key, keySize);
     if (node != NULL) {
         return node->value;
     }
 
+    if (rchkKVStoreRehashActive(store)) {
+        index = store->hash(key, keySize) % store->newSize;
+        node = _rchkKVStoreSearch(store->new, index, key, keySize);
+        if (node != NULL) {
+            return node->value;
+        }
+    }
+
     return NULL;
+}
+
+static int _rchkKVStoreDelete(RchkBucketNode** buckets, rchkKVStoreHash* hash, int size, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
+    uint64_t index = hash(key, keySize) % size;
+
+    RchkBucketNode* first = buckets[index];
+    RchkBucketNode* current = first;
+    RchkBucketNode* prev = NULL;
+
+    next:
+        while(current != NULL) {
+            if (current->keySize != keySize) {
+                prev = current;
+                current = current->next;
+                continue;
+            }
+
+            for (int i=0; i<keySize; i++) {
+                if (current->key[i] != key[i]) {
+                    prev = current;
+                    current = current->next;
+                    goto next;
+                }
+            }
+
+            if (current == first) {
+                buckets[index] = current->next;
+            } else {
+                prev->next = current->next;
+            }
+
+            if (freeKeyValue != NULL) {
+                freeKeyValue(current->key, current->keySize, current->value->value, current->value->size);
+            }
+            free(current->value);
+            free(current);
+
+            return 1; // one element has been found and deleted
+        }
+
+    return 0; // zero elements has been found and deleted
 }
 
 int rchkKVStoreDelete(RchkKVStore* store, char* key, int keySize) {
@@ -155,46 +219,14 @@ int rchkKVStoreDelete(RchkKVStore* store, char* key, int keySize) {
 }
 
 int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
-    uint64_t index = store->hash(key, keySize) % store->size;
-
-    RchkBucketNode* first = store->buckets[index];
-    RchkBucketNode* current = first;
-    RchkBucketNode* prev = NULL;
-
-next:
-    while(current != NULL) {
-        if (current->keySize != keySize) {
-            prev = current;
-            current = current->next;
-            continue;
-        }
-
-        for (int i=0; i<keySize; i++) {
-            if (current->key[i] != key[i]) {
-                prev = current;
-                current = current->next;
-                goto next;
-            }
-        }
-
-        if (current == first) {
-            store->buckets[index] = current->next;
-        } else {
-            prev->next = current->next;
-        }
-
-        if (freeKeyValue != NULL) { 
-            freeKeyValue(current->key, current->keySize, current->value->value, current->value->size); 
-        }
-        free(current->value);
-        free(current);
-
-        store->used--;
-
-        return 1; // one element has been found and deleted
+    int result = _rchkKVStoreDelete(store->buckets, store->hash, store->size, key, keySize, freeKeyValue);
+    if (result > 0) {
+        return result;
     }
-
-    return 0; // zero elements has been found and deleted
+    if (!rchkKVStoreRehashActive(store)) {
+        return 0;
+    }
+    return _rchkKVStoreDelete(store->new, store->hash, store->newSize, key, keySize, freeKeyValue);
 }
 
 void  rchkKVStoreFree(RchkKVStore* store) {
@@ -218,12 +250,29 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
             current = next;
         }
     }
-
     free(store->buckets);
+
+    if (rchkKVStoreRehashActive(store)) {
+        for (int i=0; i<store->newSize; i++) {
+            current = store->new[i];
+
+            while (current != NULL) {
+                next = current->next;
+                if (freeKeyValue != NULL) {
+                    freeKeyValue(current->key, current->keySize, current->value->value, current->value->size);
+                }
+                free(current->value);
+                free(current);
+                current = next;
+            }
+        }
+    }
+    free(store->new);
+
     free(store);
 }
 
-void _rchkKVStoreStartExpandIfNeeded(RchkKVStore* store) {
+void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store) {
     int expansionNeeded = _rchkKVStoreExpandNeeded(store);
     int rehashActive = rchkKVStoreRehashActive(store);
     int newSize = store->size * 2;
