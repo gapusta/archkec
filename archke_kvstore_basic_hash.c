@@ -21,13 +21,12 @@ typedef struct RchkBucketNode {
 
 struct RchkKVStore {
     RchkBucketNode** buckets; // primary table
-    rchkKVStoreHash* hash;
-    int size;
-    int used;
-
     RchkBucketNode** new; // new table during incremental rehashing
+    rchkKVStoreHash* hash;
+    int used; // total number of elements
+    int size; // current table size
     int newSize; // new table size
-    int ridx; // next bucket to move during rehashing step
+    int rehashIdx; // next bucket to move during a rehash step
 };
 
 struct RchkKVStoreScanner {
@@ -60,14 +59,11 @@ RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash, int initialSize) {
         return NULL;
     }
 
-    new->buckets = malloc(initialSize * sizeof(RchkBucketNode*));
+    // allocates array and inits all values to NULL
+    new->buckets = calloc(initialSize, sizeof(RchkBucketNode*));
     if (new->buckets == NULL) {
         free(new);
         return NULL;
-    }
-
-    for (int i=0; i<initialSize; i++) {
-        new->buckets[i] = NULL;
     }
 
     new->hash = hash != NULL ? hash : _rchkHash;
@@ -76,7 +72,7 @@ RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash, int initialSize) {
 
     new->new = NULL;
     new->newSize = 0;
-    new->ridx = 0;
+    new->rehashIdx = 0;
 
     return new;
 }
@@ -281,15 +277,11 @@ void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store) {
 
     if (expansionNeeded && !rehashActive) {
         int newSize = store->size * 2;
-        store->ridx = 0;
+        store->rehashIdx = 0;
         store->newSize = newSize;
-        store->new = malloc(newSize * sizeof(RchkBucketNode*));
+        store->new = calloc(newSize, sizeof(RchkBucketNode*));
         if (store->new == NULL) {
             rchkExitFailure("Fatal: OOM error during KV store resize");
-        }
-        // TODO: O(n) during each rehash start - fix it
-        for (int i=0; i<newSize; i++) {
-            store->new[i] = NULL;
         }
     }
 }
@@ -308,8 +300,8 @@ void rchkKVStoreRehashStep(RchkKVStore* store) {
     }
 
     // 1. remove bucket from primary table
-    RchkBucketNode* current = store->buckets[store->ridx];
-    store->buckets[store->ridx] = NULL;
+    RchkBucketNode* current = store->buckets[store->rehashIdx];
+    store->buckets[store->rehashIdx] = NULL;
 
     // 2. scatter bucket elements across new/secondary table
     while (current != NULL) {
@@ -321,15 +313,15 @@ void rchkKVStoreRehashStep(RchkKVStore* store) {
 
         current = next;
     }
-    store->ridx++;
+    store->rehashIdx++;
 
     // 3. complete the rehashing if needed
-    if (store->ridx >= store->size) {
+    if (store->rehashIdx >= store->size) {
         free(store->buckets);
         store->buckets = store->new;
         store->size = store->newSize;
         store->new = NULL;
-        store->ridx = 0;
+        store->rehashIdx = 0;
     }
 }
 
