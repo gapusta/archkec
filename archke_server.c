@@ -369,7 +369,7 @@ void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, vo
 	rchkRemoveExpireTime(key, keySize);
 }
 
-void incrementalRehashing(RchkKVStore* kvstore, u_int64_t timeoffset) {
+void rchkIncrementalRehashing(RchkKVStore* kvstore, u_int64_t timeoffset) {
 	u_int64_t now = rchkGetMonotonicUs();
 	u_int64_t timelimit = now + timeoffset;
 	do {
@@ -414,9 +414,8 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	// } while (server.cursor > 0);
 
 	// Rehashing
-	u_int64_t timeoffset = 2; // 2 milliseconds
-	incrementalRehashing(server.kvstore, timeoffset);
-	incrementalRehashing(server.expire, timeoffset);
+	rchkIncrementalRehashing(server.kvstore, 2);
+	rchkIncrementalRehashing(server.expire, 2);
 
 	return 1000/server.hz;
 }
