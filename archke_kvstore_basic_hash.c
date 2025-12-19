@@ -38,7 +38,11 @@ struct RchkKVStoreScanner {
 
 static int _rchkKVStoreExpansionNeeded(RchkKVStore* store);
 
+static int _rchkKVStoreReductionNeeded(RchkKVStore* store);
+
 static void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store);
+
+static void _rchkKVStoreStartReductionIfNeeded(RchkKVStore* store);
 
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
@@ -218,6 +222,7 @@ int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFr
     int result = _rchkKVStoreDelete(store->buckets, store->hash, store->size, key, keySize, freeKeyValue);
     if (result > 0) {
         store->used--;
+        _rchkKVStoreStartReductionIfNeeded(store);
         return result;
     }
 
@@ -271,6 +276,11 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
     free(store);
 }
 
+
+int _rchkKVStoreExpansionNeeded(RchkKVStore* store) {
+    return store->used >= store->size;
+}
+
 void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store) {
     int expansionNeeded = _rchkKVStoreExpansionNeeded(store);
     int rehashActive = rchkKVStoreRehashActive(store);
@@ -281,13 +291,28 @@ void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store) {
         store->newSize = newSize;
         store->new = calloc(newSize, sizeof(RchkBucketNode*));
         if (store->new == NULL) {
-            rchkExitFailure("Fatal: OOM error during KV store resize");
+            rchkExitFailure("Fatal: OOM error during KV store size expansion");
         }
     }
 }
 
-int _rchkKVStoreExpansionNeeded(RchkKVStore* store) {
-    return store->used >= store->size;
+int _rchkKVStoreReductionNeeded(RchkKVStore* store) {
+    return store->size > ARCHKE_BUCKETS_INIT_SIZE && store->used <= store->size / 10;
+}
+
+void _rchkKVStoreStartReductionIfNeeded(RchkKVStore* store) {
+    int reductionNeeded = _rchkKVStoreReductionNeeded(store);
+    int rehashActive = rchkKVStoreRehashActive(store);
+
+    if (reductionNeeded && !rehashActive) {
+        int newSize = store->size / 2;
+        store->rehashIdx = 0;
+        store->newSize = newSize;
+        store->new = calloc(newSize, sizeof(RchkBucketNode*));
+        if (store->new == NULL) {
+            rchkExitFailure("Fatal: OOM error during KV store size reduction");
+        }
+    }
 }
 
 int rchkKVStoreRehashActive(RchkKVStore* store) {
