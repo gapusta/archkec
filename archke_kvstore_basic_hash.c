@@ -36,13 +36,7 @@ struct RchkKVStoreScanner {
     RchkBucketNode* current;
 };
 
-static int _rchkKVStoreExpansionNeeded(RchkKVStore* store);
-
-static int _rchkKVStoreReductionNeeded(RchkKVStore* store);
-
-static void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store);
-
-static void _rchkKVStoreStartReductionIfNeeded(RchkKVStore* store);
+static void _rchkKVStoreStartResizeIfNeeded(RchkKVStore* store);
 
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
@@ -161,7 +155,7 @@ int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int 
         uint64_t index = store->hash(key, keySize) % store->size;
         new->next = store->buckets[index];
         store->buckets[index] = new;
-        _rchkKVStoreStartExpansionIfNeeded(store);
+        _rchkKVStoreStartResizeIfNeeded(store);
     }
 
     return 0;
@@ -222,7 +216,7 @@ int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFr
     int result = _rchkKVStoreDelete(store->buckets, store->hash, store->size, key, keySize, freeKeyValue);
     if (result > 0) {
         store->used--;
-        _rchkKVStoreStartReductionIfNeeded(store);
+        _rchkKVStoreStartResizeIfNeeded(store);
         return result;
     }
 
@@ -276,41 +270,33 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
     free(store);
 }
 
+void _rchkKVStoreStartResizeIfNeeded(RchkKVStore* store) {
+    if (rchkKVStoreRehashActive(store)) {
+        return;
+    }
 
-int _rchkKVStoreExpansionNeeded(RchkKVStore* store) {
-    return store->used >= store->size;
-}
-
-void _rchkKVStoreStartExpansionIfNeeded(RchkKVStore* store) {
-    int expansionNeeded = _rchkKVStoreExpansionNeeded(store);
-    int rehashActive = rchkKVStoreRehashActive(store);
-
-    if (expansionNeeded && !rehashActive) {
+    if (store->used >= store->size) {
         int newSize = store->size * 2;
         store->rehashIdx = 0;
         store->newSize = newSize;
         store->new = calloc(newSize, sizeof(RchkBucketNode*));
         if (store->new == NULL) {
-            rchkExitFailure("Fatal: OOM error during KV store size expansion");
+            rchkExitFailure("Fatal: OOM error during KV store resize up");
         }
+        return;
     }
-}
 
-int _rchkKVStoreReductionNeeded(RchkKVStore* store) {
-    return store->size > ARCHKE_BUCKETS_INIT_SIZE && store->used <= store->size / 10;
-}
+    if (store->size <= ARCHKE_BUCKETS_INIT_SIZE) {
+        return;
+    }
 
-void _rchkKVStoreStartReductionIfNeeded(RchkKVStore* store) {
-    int reductionNeeded = _rchkKVStoreReductionNeeded(store);
-    int rehashActive = rchkKVStoreRehashActive(store);
-
-    if (reductionNeeded && !rehashActive) {
+    if (store->used <= store->size / 10) {
         int newSize = store->size / 2;
         store->rehashIdx = 0;
         store->newSize = newSize;
         store->new = calloc(newSize, sizeof(RchkBucketNode*));
         if (store->new == NULL) {
-            rchkExitFailure("Fatal: OOM error during KV store size reduction");
+            rchkExitFailure("Fatal: OOM error during KV store resize down");
         }
     }
 }
