@@ -34,8 +34,9 @@ void         rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeK
 /*
  Incremental rehashing API
  */
-int          rchkKVStoreRehashActive(RchkKVStore* store);
-void         rchkKVStoreRehashStep(RchkKVStore* store);
+void rchkKVStoreRehashActivateIfNeeded(RchkKVStore* store);
+int  rchkKVStoreRehashActive(RchkKVStore* store);
+void rchkKVStoreRehashStep(RchkKVStore* store);
 
 /*
  Used to iterate over the elements of a kvstore.

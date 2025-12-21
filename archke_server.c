@@ -370,12 +370,15 @@ void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, vo
 }
 
 void rchkIncrementalRehashing(RchkKVStore* kvstore, u_int64_t timeoffset) {
+	rchkKVStoreRehashActivateIfNeeded(kvstore);
+
 	u_int64_t now = rchkGetMonotonicUs();
 	u_int64_t timelimit = now + timeoffset;
 	do {
 		if (!rchkKVStoreRehashActive(kvstore)) {
 			break;
 		}
+		printf("Incremental rehash step\n");
 		rchkKVStoreRehashStep(kvstore);
 		now = rchkGetMonotonicUs();
 	} while (timelimit > now);

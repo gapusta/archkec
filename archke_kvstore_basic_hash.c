@@ -7,7 +7,7 @@
 
 // hash function link - https://benhoyt.com/writings/hash-table-in-c/
 
-#define ARCHKE_BUCKETS_INIT_SIZE 2
+#define ARCHKE_BUCKETS_INIT_SIZE 4
 
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
@@ -35,8 +35,6 @@ struct RchkKVStoreScanner {
     RchkBucketNode* prev; /* previous element required for effective removal */
     RchkBucketNode* current;
 };
-
-static void _rchkKVStoreStartResizeIfNeeded(RchkKVStore* store);
 
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
@@ -155,7 +153,7 @@ int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int 
         uint64_t index = store->hash(key, keySize) % store->size;
         new->next = store->buckets[index];
         store->buckets[index] = new;
-        _rchkKVStoreStartResizeIfNeeded(store);
+        rchkKVStoreRehashActivateIfNeeded(store);
     }
 
     return 0;
@@ -216,7 +214,7 @@ int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFr
     int result = _rchkKVStoreDelete(store->buckets, store->hash, store->size, key, keySize, freeKeyValue);
     if (result > 0) {
         store->used--;
-        _rchkKVStoreStartResizeIfNeeded(store);
+        rchkKVStoreRehashActivateIfNeeded(store);
         return result;
     }
 
@@ -270,11 +268,12 @@ void rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeKeyValue)
     free(store);
 }
 
-void _rchkKVStoreStartResizeIfNeeded(RchkKVStore* store) {
+void rchkKVStoreRehashActivateIfNeeded(RchkKVStore* store) {
     if (rchkKVStoreRehashActive(store)) {
         return;
     }
 
+    // Resize up if needed
     if (store->used >= store->size) {
         int newSize = store->size * 2;
         store->rehashIdx = 0;
@@ -290,6 +289,7 @@ void _rchkKVStoreStartResizeIfNeeded(RchkKVStore* store) {
         return;
     }
 
+    // Resize down if needed
     if (store->used <= store->size / 10) {
         int newSize = store->size / 2;
         store->rehashIdx = 0;
