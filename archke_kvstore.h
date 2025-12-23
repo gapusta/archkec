@@ -48,6 +48,6 @@ void rchkKVStoreRehashStep(RchkKVStore* store);
      new cursor value you must use in the next call.
  3) When the returned cursor is 0, the iteration is complete.
  */
-int rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData);
+u_int64_t rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData);
 
 #endif

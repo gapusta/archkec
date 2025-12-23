@@ -23,10 +23,14 @@ struct RchkKVStore {
     RchkBucketNode** buckets; // primary table
     RchkBucketNode** new; // new table during incremental rehashing
     rchkKVStoreHash* hash;
-    int used; // total number of elements
-    int size; // current table size
-    int newSize; // new table size
-    int rehashIdx; // next bucket to move during a rehash step
+    u_int64_t used; // total number of elements
+    u_int64_t size; // current table size
+    // mask = size - 1. for example is size = 16 then mask is 0..01111 (16 - 1 = 15 in binary)
+    u_int64_t mask;
+    u_int64_t newSize; // new table size
+    // newMask = newSize - 1. for example is size = 64 then mask is 0..0111111 (64 - 1 = 63 in binary)
+    u_int64_t newMask;
+    u_int64_t rehashIdx; // next bucket to move during a rehash step
 };
 
 struct RchkKVStoreScanner {
@@ -64,17 +68,19 @@ RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash, int initialSize) {
 
     new->hash = hash != NULL ? hash : _rchkHash;
     new->size = initialSize;
+    new->mask = initialSize - 1;
     new->used = 0;
 
     new->new = NULL;
     new->newSize = 0;
+    new->newMask = 0;
     new->rehashIdx = 0;
 
     return new;
 }
 
-RchkBucketNode* _rchkKVStoreSearchInBuckets(RchkBucketNode** buckets, int size, rchkKVStoreHash* hash, char* key, int keySize) {
-    uint64_t index = hash(key, keySize) % size;
+RchkBucketNode* _rchkKVStoreSearchInBuckets(RchkBucketNode** buckets, u_int64_t mask, rchkKVStoreHash* hash, char* key, int keySize) {
+    uint64_t index = hash(key, keySize) & mask;
     RchkBucketNode* node = buckets[index];
     
 next:
@@ -99,14 +105,14 @@ next:
 
 RchkBucketNode* _rchkKVStoreSearch(RchkKVStore* store, char* key, int keySize) {
     // 1. Search in the current table
-    RchkBucketNode* node = _rchkKVStoreSearchInBuckets(store->buckets, store->size, store->hash, key, keySize);
+    RchkBucketNode* node = _rchkKVStoreSearchInBuckets(store->buckets, store->mask, store->hash, key, keySize);
     if (node != NULL) {
         return node;
     }
 
     // 2. Search in new table if rehashing is in progress
     if (rchkKVStoreRehashActive(store)) {
-        node = _rchkKVStoreSearchInBuckets(store->new, store->newSize, store->hash, key, keySize);
+        node = _rchkKVStoreSearchInBuckets(store->new, store->newMask, store->hash, key, keySize);
         if (node != NULL) {
             return node;
         }
@@ -146,11 +152,11 @@ int rchkKVStorePut(RchkKVStore* store, char* key, int keySize, void* value, int 
     store->used++;
 
     if (rchkKVStoreRehashActive(store)) {
-        uint64_t index = store->hash(key, keySize) % store->newSize;
+        uint64_t index = store->hash(key, keySize) & store->newMask;
         new->next = store->new[index];
         store->new[index] = new;
     } else {
-        uint64_t index = store->hash(key, keySize) % store->size;
+        uint64_t index = store->hash(key, keySize) & store->mask;
         new->next = store->buckets[index];
         store->buckets[index] = new;
         rchkKVStoreRehashActivateIfNeeded(store);
@@ -168,8 +174,8 @@ RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
     return NULL;
 }
 
-static int _rchkKVStoreDelete(RchkBucketNode** buckets, rchkKVStoreHash* hash, int size, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
-    uint64_t index = hash(key, keySize) % size;
+static int _rchkKVStoreDelete(RchkBucketNode** buckets, rchkKVStoreHash* hash, u_int64_t mask, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
+    uint64_t index = hash(key, keySize) & mask;
 
     RchkBucketNode* first = buckets[index];
     RchkBucketNode* current = first;
@@ -211,7 +217,7 @@ static int _rchkKVStoreDelete(RchkBucketNode** buckets, rchkKVStoreHash* hash, i
 
 int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
     // 1. Try to delete from current table
-    int result = _rchkKVStoreDelete(store->buckets, store->hash, store->size, key, keySize, freeKeyValue);
+    int result = _rchkKVStoreDelete(store->buckets, store->hash, store->mask, key, keySize, freeKeyValue);
     if (result > 0) {
         store->used--;
         rchkKVStoreRehashActivateIfNeeded(store);
@@ -220,7 +226,7 @@ int rchkKVStoreDelete2(RchkKVStore* store, char* key, int keySize, rchkKVStoreFr
 
     // 2. Try to delete from new table if rehashing is in progress
     if (rchkKVStoreRehashActive(store)) {
-        result = _rchkKVStoreDelete(store->new, store->hash, store->newSize, key, keySize, freeKeyValue);
+        result = _rchkKVStoreDelete(store->new, store->hash, store->newMask, key, keySize, freeKeyValue);
         if (result > 0) {
             store->used--;
             return result;
@@ -238,7 +244,7 @@ void  rchkKVStoreFree(RchkKVStore* store) {
     rchkKVStoreFree2(store, NULL);
 }
 
-void _rchkKVStoreFreeBuckets(RchkBucketNode** buckets, int size, rchkKVStoreFreeKeyValue* freeKeyValue) {
+void _rchkKVStoreFreeBuckets(RchkBucketNode** buckets, u_int64_t size, rchkKVStoreFreeKeyValue* freeKeyValue) {
     for (int i=0; i<size; i++) {
         RchkBucketNode *current = buckets[i];
 
@@ -275,28 +281,13 @@ void rchkKVStoreRehashActivateIfNeeded(RchkKVStore* store) {
 
     // Resize up if needed
     if (store->used >= store->size) {
-        int newSize = store->size * 2;
+        u_int64_t newSize = store->size * 2;
         store->rehashIdx = 0;
         store->newSize = newSize;
+        store->newMask = newSize - 1;
         store->new = calloc(newSize, sizeof(RchkBucketNode*));
         if (store->new == NULL) {
             rchkExitFailure("Fatal: OOM error during KV store resize up");
-        }
-        return;
-    }
-
-    if (store->size <= ARCHKE_BUCKETS_INIT_SIZE) {
-        return;
-    }
-
-    // Resize down if needed
-    if (store->used <= store->size / 10) {
-        int newSize = store->size / 2;
-        store->rehashIdx = 0;
-        store->newSize = newSize;
-        store->new = calloc(newSize, sizeof(RchkBucketNode*));
-        if (store->new == NULL) {
-            rchkExitFailure("Fatal: OOM error during KV store resize down");
         }
     }
 }
@@ -331,14 +322,17 @@ void rchkKVStoreRehashStep(RchkKVStore* store) {
         free(store->buckets);
         store->buckets = store->new;
         store->size = store->newSize;
+        store->mask = store->newMask;
         store->new = NULL;
+        store->newSize = 0;
+        store->newMask = 0;
         store->rehashIdx = 0;
     }
 }
 
 /* Scanner implementation */
 
-static int rchkKVStoreScanGetNonEmptyBucket(RchkKVStore* store, int start) {
+static u_int64_t rchkKVStoreScanGetNonEmptyBucket(RchkKVStore* store, int start) {
     for (int bucket=start; bucket<store->size; bucket++) {
         if (store->buckets[bucket] != NULL) {
             return bucket;
@@ -348,13 +342,13 @@ static int rchkKVStoreScanGetNonEmptyBucket(RchkKVStore* store, int start) {
     return store->size;
 }
 
-int rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData) {
+u_int64_t rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData) {
     if (cursor < 0 || cursor > store->size) {
         // invalid cursor value
         return -1;
     }
 
-    int bucket = rchkKVStoreScanGetNonEmptyBucket(store, cursor);
+    u_int64_t bucket = rchkKVStoreScanGetNonEmptyBucket(store, cursor);
     if (bucket == store->size) {
         return 0;
     }
