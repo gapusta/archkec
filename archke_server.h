@@ -46,7 +46,7 @@ typedef struct RchkClient {
 typedef struct RchkServer {
 	int hz;
 	int shutdown;
-	int cursor; /* active expire scan cursor */
+	uint64_t cursor; /* active expire scan cursor */
 	RchkKVStore* kvstore; /* stores data */
 	RchkKVStore* commands; /* stores executable commands (e.g. 'SET', 'GET') */
 	RchkKVStore* expire; /* stores when keys are supposed to expire */

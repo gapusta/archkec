@@ -12,6 +12,8 @@
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
 
+#define CHAR_BIT  __CHAR_BIT__
+
 typedef struct RchkBucketNode {
     char* key;
     int keySize;
@@ -23,14 +25,14 @@ struct RchkKVStore {
     RchkBucketNode** buckets; // primary table
     RchkBucketNode** new; // new table during incremental rehashing
     rchkKVStoreHash* hash;
-    u_int64_t used; // total number of elements
-    u_int64_t size; // current table size
+    uint64_t used; // total number of elements
+    uint64_t size; // current table size
     // mask = size - 1. for example is size = 16 then mask is 0..01111 (16 - 1 = 15 in binary)
-    u_int64_t mask;
-    u_int64_t newSize; // new table size
+    uint64_t mask;
+    uint64_t newSize; // new table size
     // newMask = newSize - 1. for example is size = 64 then mask is 0..0111111 (64 - 1 = 63 in binary)
-    u_int64_t newMask;
-    u_int64_t rehashIdx; // next bucket to move during a rehash step
+    uint64_t newMask;
+    uint64_t rehashIdx; // next bucket to move during a rehash step
 };
 
 struct RchkKVStoreScanner {
@@ -39,6 +41,18 @@ struct RchkKVStoreScanner {
     RchkBucketNode* prev; /* previous element required for effective removal */
     RchkBucketNode* current;
 };
+
+/* Function to reverse bits. Algorithm from:
+ * http://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel */
+static unsigned long long rev(unsigned long long v) {
+    unsigned long long s = CHAR_BIT * sizeof(v); // bit size; must be power of 2
+    unsigned long long mask = ~0UL;
+    while ((s >>= 1) > 0) {
+        mask ^= (mask << s);
+        v = ((v >> s) & mask) | ((v << s) & ~mask);
+    }
+    return v;
+}
 
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
@@ -79,7 +93,7 @@ RchkKVStore* rchkKVStoreNew2(rchkKVStoreHash* hash, int initialSize) {
     return new;
 }
 
-RchkBucketNode* _rchkKVStoreSearchInBuckets(RchkBucketNode** buckets, u_int64_t mask, rchkKVStoreHash* hash, char* key, int keySize) {
+RchkBucketNode* _rchkKVStoreSearchInBuckets(RchkBucketNode** buckets, uint64_t mask, rchkKVStoreHash* hash, char* key, int keySize) {
     uint64_t index = hash(key, keySize) & mask;
     RchkBucketNode* node = buckets[index];
     
@@ -174,7 +188,7 @@ RchkKVValue* rchkKVStoreGet(RchkKVStore* store, char* key, int keySize) {
     return NULL;
 }
 
-static int _rchkKVStoreDelete(RchkBucketNode** buckets, rchkKVStoreHash* hash, u_int64_t mask, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
+static int _rchkKVStoreDelete(RchkBucketNode** buckets, rchkKVStoreHash* hash, uint64_t mask, char* key, int keySize, rchkKVStoreFreeKeyValue* freeKeyValue) {
     uint64_t index = hash(key, keySize) & mask;
 
     RchkBucketNode* first = buckets[index];
@@ -244,7 +258,7 @@ void  rchkKVStoreFree(RchkKVStore* store) {
     rchkKVStoreFree2(store, NULL);
 }
 
-void _rchkKVStoreFreeBuckets(RchkBucketNode** buckets, u_int64_t size, rchkKVStoreFreeKeyValue* freeKeyValue) {
+void _rchkKVStoreFreeBuckets(RchkBucketNode** buckets, uint64_t size, rchkKVStoreFreeKeyValue* freeKeyValue) {
     for (int i=0; i<size; i++) {
         RchkBucketNode *current = buckets[i];
 
@@ -281,7 +295,7 @@ void rchkKVStoreRehashActivateIfNeeded(RchkKVStore* store) {
 
     // Resize up if needed
     if (store->used >= store->size) {
-        u_int64_t newSize = store->size * 2;
+        uint64_t newSize = store->size * 2;
         store->rehashIdx = 0;
         store->newSize = newSize;
         store->newMask = newSize - 1;
@@ -309,7 +323,7 @@ void rchkKVStoreRehashStep(RchkKVStore* store) {
     while (current != NULL) {
         RchkBucketNode* next = current->next;
 
-        uint64_t index = store->hash(current->key, current->keySize) % store->newSize;
+        uint64_t index = store->hash(current->key, current->keySize) & store->newMask;
         current->next = store->new[index];
         store->new[index] = current;
 
@@ -331,35 +345,58 @@ void rchkKVStoreRehashStep(RchkKVStore* store) {
 }
 
 /* Scanner implementation */
-
-static u_int64_t rchkKVStoreScanGetNonEmptyBucket(RchkKVStore* store, int start) {
-    for (int bucket=start; bucket<store->size; bucket++) {
-        if (store->buckets[bucket] != NULL) {
-            return bucket;
-        }
-    }
-
-    return store->size;
-}
-
-u_int64_t rchkKVStoreScan(RchkKVStore* store, int cursor, rchkKVStoreScanCallback* callback, void* callbackData) {
-    if (cursor < 0 || cursor > store->size) {
+uint64_t rchkKVStoreScan(RchkKVStore* store, uint64_t cursor, rchkKVStoreScanCallback* callback, void* callbackData) {
+    if (cursor > store->size) {
         // invalid cursor value
         return -1;
     }
 
-    u_int64_t bucket = rchkKVStoreScanGetNonEmptyBucket(store, cursor);
-    if (bucket == store->size) {
+    if (cursor == store->size) {
         return 0;
     }
 
-    RchkBucketNode* next;
-    RchkBucketNode* current = store->buckets[bucket];;
-    do {
-        next = current->next;
-        callback(current->key, current->keySize, current->value->value, current->value->size, callbackData);
-        current = next;
-    } while (current != NULL);
+    if (!rchkKVStoreRehashActive(store)) {
+        uint64_t mask = store->mask;
 
-    return bucket + 1;
+        RchkBucketNode* current = store->buckets[cursor & mask];
+        while (current != NULL) {
+            callback(current->key, current->keySize, current->value->value, current->value->size, callbackData);
+            current = current->next;
+        }
+
+        /* Set unmasked bits so incrementing the reversed cursor operates on the masked bits */
+        cursor |= ~mask;
+
+        /* Increment the reverse cursor */
+        cursor = rev(cursor);
+        cursor++;
+        cursor = rev(cursor);
+    } else {
+        uint64_t mask = store->mask;
+        uint64_t newMask = store->newMask;
+
+        RchkBucketNode* current = store->buckets[cursor & mask];
+        while (current != NULL) {
+            callback(current->key, current->keySize, current->value->value, current->value->size, callbackData);
+            current = current->next;
+        }
+
+        do {
+            current = store->new[cursor & newMask];
+            while (current != NULL) {
+                callback(current->key, current->keySize, current->value->value, current->value->size, callbackData);
+                current = current->next;
+            }
+
+            /* Set unmasked bits so incrementing the reversed cursor operates on the masked bits */
+            cursor |= ~newMask;
+
+            /* Increment the reverse cursor */
+            cursor = rev(cursor);
+            cursor++;
+            cursor = rev(cursor);
+        } while (cursor & (mask ^ newMask)); /* Continue while bits covered by mask difference is non-zero */
+    }
+
+    return cursor;
 }
