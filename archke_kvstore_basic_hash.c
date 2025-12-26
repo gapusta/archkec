@@ -7,7 +7,7 @@
 
 // hash function link - https://benhoyt.com/writings/hash-table-in-c/
 
-#define ARCHKE_BUCKETS_INIT_SIZE 4
+#define ARCHKE_BUCKETS_INIT_SIZE 2
 
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
@@ -310,9 +310,9 @@ int rchkKVStoreRehashActive(RchkKVStore* store) {
     return store->new != NULL;
 }
 
-void rchkKVStoreRehashStep(RchkKVStore* store) {
+int rchkKVStoreRehashStep(RchkKVStore* store) {
     if (!rchkKVStoreRehashActive(store)) {
-        return;
+        return 0;
     }
 
     // 1. remove bucket from primary table
@@ -341,7 +341,11 @@ void rchkKVStoreRehashStep(RchkKVStore* store) {
         store->newSize = 0;
         store->newMask = 0;
         store->rehashIdx = 0;
+
+        return 0;
     }
+
+    return 1;
 }
 
 /* Scanner implementation */

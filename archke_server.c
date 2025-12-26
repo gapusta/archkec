@@ -29,6 +29,8 @@
 
 #define ARCHKE_MAX_BINARY_SIZE_CHARS 128
 
+#define INCREMENTAL_REHASHING_TIME_THRESHOLD 1 // 1 millisecond
+
 typedef struct RchkActiveExpiryScanData {
 	uint64_t now;
 } RchkActiveExpiryScanData;
@@ -363,25 +365,26 @@ void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, vo
 
 	if (now <= *when) { return; }
 
-	// activeExpirePrintKeyDelete(key, keySize);
+	activeExpirePrintKeyDelete(key, keySize);
 
 	rchkKVStoreDelete(server.kvstore, key, keySize);
 	rchkRemoveExpireTime(key, keySize);
 }
 
-void rchkIncrementalRehashing(RchkKVStore* kvstore, uint64_t timeoffset) {
+uint64_t rchkIncrementalRehashing(RchkKVStore* kvstore, uint64_t thresholdUs) {
 	rchkKVStoreRehashActivateIfNeeded(kvstore);
 
-	uint64_t now = rchkGetMonotonicUs();
-	uint64_t timelimit = now + timeoffset;
-	do {
-		if (!rchkKVStoreRehashActive(kvstore)) {
-			break;
-		}
-		// printf("Incremental rehash step\n");
-		rchkKVStoreRehashStep(kvstore);
+	uint64_t start = rchkGetMonotonicUs();
+	uint64_t now = start;
+	uint64_t timelimit = start + thresholdUs;
+
+	while (rchkKVStoreRehashStep(kvstore)) {
+		printf("rehashing step done\n");
 		now = rchkGetMonotonicUs();
-	} while (timelimit > now);
+		if (timelimit > now) { break; }
+	}
+
+	return now - start;
 }
 
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
@@ -411,8 +414,8 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	} while (server.cursor > 0);
 
 	// Incremental rehashing
-	rchkIncrementalRehashing(server.kvstore, 2);
-	rchkIncrementalRehashing(server.expire, 2);
+	rchkIncrementalRehashing(server.kvstore, INCREMENTAL_REHASHING_TIME_THRESHOLD);
+	rchkIncrementalRehashing(server.expire, INCREMENTAL_REHASHING_TIME_THRESHOLD);
 
 	return 1000/server.hz;
 }

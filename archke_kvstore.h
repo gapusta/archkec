@@ -34,9 +34,27 @@ void         rchkKVStoreFree2(RchkKVStore* store, rchkKVStoreFreeKeyValue* freeK
 /*
  Incremental rehashing API
  */
+
+/*
+ Starts incremental rehashing if required.
+ Rehashing starts when Load Factor >= 1
+ Loan Factor = amount of elements / amount of buckets in current table
+ */
 void rchkKVStoreRehashActivateIfNeeded(RchkKVStore* store);
+
+/*
+ Returns 1 if rehashing is in progress, 0 otherwise
+ */
 int  rchkKVStoreRehashActive(RchkKVStore* store);
-void rchkKVStoreRehashStep(RchkKVStore* store);
+
+/*
+ Performs single step of incremental rehashing. Returns 1 if there are still
+ keys to move from the old to the new hash table, otherwise 0 is returned.
+
+ Note that a rehashing step consists in moving a bucket (that may have more
+ than one key as we use chaining) from the old to the new hash table
+ */
+int rchkKVStoreRehashStep(RchkKVStore* store);
 
 /*
  Used to iterate over the elements of a kvstore.
