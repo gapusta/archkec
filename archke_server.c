@@ -365,7 +365,7 @@ void activeExpiryCallback(char* key, int keySize, void* value, int valueSize, vo
 
 	if (now <= *when) { return; }
 
-	activeExpirePrintKeyDelete(key, keySize);
+	// activeExpirePrintKeyDelete(key, keySize);
 
 	rchkKVStoreDelete(server.kvstore, key, keySize);
 	rchkRemoveExpireTime(key, keySize);
@@ -379,7 +379,7 @@ uint64_t rchkIncrementalRehashing(RchkKVStore* kvstore, uint64_t thresholdUs) {
 	uint64_t timelimit = start + thresholdUs;
 
 	while (rchkKVStoreRehashStep(kvstore)) {
-		printf("rehashing step done\n");
+		// printf("rehashing step done\n");
 		now = rchkGetMonotonicUs();
 		if (timelimit > now) { break; }
 	}

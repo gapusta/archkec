@@ -7,7 +7,7 @@
 
 // hash function link - https://benhoyt.com/writings/hash-table-in-c/
 
-#define ARCHKE_BUCKETS_INIT_SIZE 2
+#define ARCHKE_BUCKETS_INIT_SIZE 4
 
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
