@@ -5,8 +5,6 @@
 #include "archke_error.h"
 #include "archke_kvstore.h"
 
-// hash function link - https://benhoyt.com/writings/hash-table-in-c/
-
 #define ARCHKE_BUCKETS_INIT_SIZE 4
 
 #define FNV_OFFSET 14695981039346656037UL
@@ -54,6 +52,8 @@ static unsigned long long rev(unsigned long long v) {
     return v;
 }
 
+/* Hash generation. Algorithm from:
+ * https://benhoyt.com/writings/hash-table-in-c/ */
 static uint64_t _rchkHash(const char* target, int targetSize) {
     uint64_t hash = FNV_OFFSET;
     for (int i=0; i<targetSize; i++) {
