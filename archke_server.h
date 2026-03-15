@@ -9,11 +9,11 @@
 #define ARCHKE_BSAR_ERROR_EXPECTED_START_SIGN -1
 #define ARCHKE_BSAR_ERROR_EXPECTED_ELEMENT_START_SIGN -2
 
-typedef struct RchkArrayElement {
+typedef struct RchkQueryArg {
 	int filled;
 	int size;
 	char* bytes;
-} RchkArrayElement;
+} RchkQueryArg;
 
 typedef struct RchkResponseElement {
 	int size;
@@ -22,25 +22,25 @@ typedef struct RchkResponseElement {
 } RchkResponseElement;
 
 typedef struct RchkClient {
-	int fd;
+	int fd; /* socket fd */
 
-	// [ raw input -> command elements ] mapping state machine
-	int readState;
+	int queryParserState; /* query parsing state machine [ raw input -> argv ] */
 
-	// raw input bytes from socket
-	char* readBuffer;
-	int readBufferSize;
-	int readBufferOccupied;
+	char* queryBuff; /* query bytes from socket */
+	int queryBuffCap; /* query buffer capacity */
+	int queryBuffLen; /* how much of query buffer is occupied by query bytes */
+	int queryBuffPos; /* points at first unprocessed byte in query buffer */
 
 	// any command is expected to be an array of bulk/binary strings
-    RchkArrayElement* commandElements; // elements of this command/array
-	int commandElementsCount;
-	int commandElementsCurrentIndex;
-	
+    RchkQueryArg* argv; // arguments of current command
+	int argc; // arguments count of current command
+	int argi; // currently processed argument
+
 	// output
-	RchkResponseElement* responseElements;
-	RchkResponseElement* responseElementsTail;
-	RchkResponseElement* responseElementsUnwritten; // not yet written response elements
+	// TODO: Make it a linked list
+	RchkResponseElement* reply;
+	RchkResponseElement* replyTail;
+	RchkResponseElement* replyRemaining; // not yet written response elements
 } RchkClient;
 
 typedef struct RchkServer {
@@ -57,11 +57,13 @@ extern RchkServer server;
 void rchkServerInit();
 
 RchkClient* rchkClientNew(int fd);
+void rchkClientResetQueryBufferState(RchkClient* client);
+void rchkClientResetQueryParserState(RchkClient* client);
+void rchkClientResetArgv(RchkClient* client);
 void rchkClientReset(RchkClient* client); // resets client after each command
-void rchkClientResetInputOnly(RchkClient* client, int bytesProcessed);
 void rchkClientFree(RchkClient* client);
 
-int rchkProcessReadBuffer(RchkClient* client);
+int rchkProcessQueryBuffer(RchkClient* client);
 int rchkIsCompleteCommandReceived(RchkClient* client);
 
 int rchkAppendToReply(RchkClient* client, char* data, int dataSize);

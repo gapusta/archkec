@@ -9,13 +9,14 @@
 #include "archke_logs.h"
 #include "archke_commands.h"
 
+// TODO: refactor
 void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
 
 	RchkSocketBuffer buffs[ARCHKE_WRITE_MAX_OUTPUTS];
 
 	int outputs = 0;
-	RchkResponseElement* element = client->responseElementsUnwritten;
+	RchkResponseElement* element = client->replyRemaining;
 	while (element != NULL) {
 		buffs[outputs].size = element->size;
 		buffs[outputs].buffer = element->bytes;
@@ -35,12 +36,12 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 		return;
 	}
 
-	element = client->responseElementsUnwritten;
+	element = client->replyRemaining;
 	while (element != NULL) {
 		if (bytesWrittenAmount < element->size) {
-			client->responseElementsUnwritten->bytes = element->bytes + bytesWrittenAmount;
-			client->responseElementsUnwritten->size = element->size - bytesWrittenAmount;
-			client->responseElementsUnwritten->next = element->next;
+			client->replyRemaining->bytes = element->bytes + bytesWrittenAmount;
+			client->replyRemaining->size = element->size - bytesWrittenAmount;
+			client->replyRemaining->next = element->next;
 			break;
 		}
 		bytesWrittenAmount -= element->size;
@@ -66,12 +67,10 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
 	
-	int bytesReceivedAmount = rchkSocketRead(client->fd, client->readBuffer, client->readBufferSize);
-	client->readBufferOccupied = bytesReceivedAmount;
-
-	if (bytesReceivedAmount < 0) {
+	int bytes = rchkSocketRead(client->fd, client->queryBuff, client->queryBuffCap);
+	if (bytes < 0) {
 		logError("Read from client failed");
-		// close connections (exactly how it is handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
+		// close connection (exactly how it is handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
 		rchkSocketShutdown(client->fd);
 		rchkEventLoopUnregister(eventLoop, client->fd);
 		rchkSocketClose(client->fd);
@@ -79,10 +78,10 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		rchkClientFree(client);
 		return;
 	}
-
-	// client sent us FIN, and we received it (client is waiting for us to send FIN back)
-	// client will not send us any more data
-	if (bytesReceivedAmount == 0) {
+	/*
+	 client sent us FIN, and we received it (client is waiting for us to send FIN back)
+	 client will not send us any more data */
+	if (bytes == 0) {
 		// we send FIN(or possibly FIN,ACK) back (or rather we ask the kernel to send FIN back to client)
 		rchkSocketShutdownWrite(client->fd);
 		// then we close (release resources)
@@ -91,28 +90,29 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 		rchkClientFree(client);
 		return;
 	}
+	client->queryBuffLen = bytes;
 
 	// pipelining
 	do {
-		int processedBytesAmount = rchkProcessReadBuffer(client);
+		client->queryBuffPos += rchkProcessQueryBuffer(client);
 
 		if (!rchkIsCompleteCommandReceived(client)) {
+			rchkClientResetQueryBufferState(client);
 			return;
 		}
 
-		char* commandName = client->commandElements[0].bytes;
-		int commandNameSize = client->commandElements[0].size;
+		// fetch the command from the command storage
+		RchkQueryArg commandName = client->argv[0];
+		RchkKVValue* commandInfo = rchkKVStoreGet(server.commands, commandName.bytes, commandName.size);
 
-		// fetch the command from command store
-		RchkKVValue* cmd = rchkKVStoreGet(server.commands, commandName, commandNameSize);
+		void (*command) (RchkClient*) = commandInfo->value;
 
-		void (*command) (RchkClient*) = cmd->value;
-
-		// run command
+		// execute command
 		command(client);
 
-		if (processedBytesAmount < client->readBufferOccupied) {
-			rchkClientResetInputOnly(client, processedBytesAmount);
+		if (client->queryBuffPos < client->queryBuffLen) {
+			rchkClientResetQueryParserState(client);
+			rchkClientResetArgv(client);
 			continue;
 		}
 
@@ -120,7 +120,7 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	} while (1);
 
 	// register write handler to send response back
-	client->responseElementsUnwritten = client->responseElements;
+	client->replyRemaining = client->reply;
 	RchkClientConfig config = { .data = client, .free = NULL };
 
 	if (rchkEventLoopRegisterIOEvent(eventLoop, client->fd, ARCHKE_EVENT_LOOP_WRITE_EVENT, rchkHandleWriteEvent, &config) < 0) {

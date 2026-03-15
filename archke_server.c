@@ -18,7 +18,7 @@
 #define ARCHKE_SERVER_ACTIVE_EXP_CURSOR_INIT 0
 
 #define ARCHKE_ELEMENTS_ARRAY_MAX_SIZE 256
-#define ARCHKE_ELEMENTS_MEMORY_MAX_SIZE 1024
+#define ARCHKE_ELEMENTS_MEMORY_MAX_SIZE (16*1024) /* 16 kb - default query buffer size */
 
 #define ARCHKE_BSAR_ARRAY 0 // start state
 #define ARCHKE_BSAR_ARRAY_SIZE 1
@@ -77,27 +77,26 @@ err:
 
 RchkClient* rchkClientNew(int fd) {
     RchkClient* client = NULL;
-    RchkArrayElement* commandElements = NULL;
-    char* readBuffer = NULL;
+    RchkQueryArg* argv = NULL;
 
     // will contain raw data/bytes from client
-    readBuffer = malloc(ARCHKE_ELEMENTS_MEMORY_MAX_SIZE * sizeof(char));
-    if (readBuffer == NULL) {
+    char* queryBuff = malloc(ARCHKE_ELEMENTS_MEMORY_MAX_SIZE * sizeof(char));
+    if (queryBuff == NULL) {
         goto client_create_err;
     }
-	memset(readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
+	memset(queryBuff, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
 
 	// each command consists of elements/tokens. These elements are
 	// parsed into an array of bulk/binary strings before passed further.
 	// First element (element of index 0) is always a command's name
-    commandElements = malloc(ARCHKE_ELEMENTS_ARRAY_MAX_SIZE * sizeof(RchkArrayElement));
-	if (commandElements == NULL) {
+    argv = malloc(ARCHKE_ELEMENTS_ARRAY_MAX_SIZE * sizeof(RchkQueryArg));
+	if (argv == NULL) {
 		goto client_create_err;
 	}
 	for (int i=0; i<ARCHKE_ELEMENTS_ARRAY_MAX_SIZE; i++) {
-		commandElements[i].size = 0;
-		commandElements[i].filled = 0;
-		commandElements[i].bytes = NULL;
+		argv[i].size = 0;
+		argv[i].filled = 0;
+		argv[i].bytes = NULL;
 	}
 
 	// here we create client itself
@@ -108,76 +107,76 @@ RchkClient* rchkClientNew(int fd) {
 
     client->fd = fd;
 
-    client->readState = ARCHKE_BSAR_ARRAY;
-    client->readBuffer = readBuffer;
-    client->readBufferSize = ARCHKE_ELEMENTS_MEMORY_MAX_SIZE;
-	client->readBufferOccupied = 0;
+    client->queryParserState = ARCHKE_BSAR_ARRAY;
+    client->queryBuff = queryBuff;
+    client->queryBuffCap = ARCHKE_ELEMENTS_MEMORY_MAX_SIZE;
+    client->queryBuffLen = 0;
+	client->queryBuffPos = 0;
     
-    client->commandElements = commandElements;
-    client->commandElementsCurrentIndex = 0;
-    client->commandElementsCount = 0;
+    client->argv = argv;
+    client->argi = 0;
+    client->argc = 0;
 
-	client->responseElements = NULL;
-	client->responseElementsTail = NULL;
-	client->responseElementsUnwritten = NULL; // not yet written response elements
+	client->reply = NULL;
+	client->replyTail = NULL;
+	client->replyRemaining = NULL; // not yet written response elements
 
     return client;
 
 client_create_err:
-    if (readBuffer != NULL) free(readBuffer);
-    if (commandElements != NULL) free(commandElements);
+    if (queryBuff != NULL) free(queryBuff);
+    if (argv != NULL) free(argv);
 
     return NULL;
 }
 
-static void rchkClearClientCommandElementsList(RchkClient* client) {
-	RchkArrayElement* commandElements = client->commandElements;
-	for (int i=0; i<client->commandElementsCount; i++) {
-		free(commandElements[i].bytes);
-		commandElements[i].size = 0;
-		commandElements[i].filled = 0;
-		commandElements[i].bytes = NULL;
+void rchkClientResetArgv(RchkClient* client) {
+	RchkQueryArg* argv = client->argv;
+	for (int i=0; i<client->argc; i++) {
+		free(argv[i].bytes);
+		argv[i].size = 0;
+		argv[i].filled = 0;
+		argv[i].bytes = NULL;
 	}
-	client->commandElementsCurrentIndex = 0;
-    client->commandElementsCount = 0;
+	client->argi = 0;
+    client->argc = 0;
 }
 
-static void rchkClearClientOutputList(RchkClient* client) {
-	RchkResponseElement* current = client->responseElements;
+static void rchkClientResetReplyList(RchkClient* client) {
+	RchkResponseElement* current = client->reply;
 	while (current != NULL) {
 		RchkResponseElement* next = current->next;
 		free(current->bytes);
 		free(current);
 		current = next;
 	}
-	client->responseElements = NULL;
-	client->responseElementsTail = NULL;
-	client->responseElementsUnwritten = NULL;
+	client->reply = NULL;
+	client->replyTail = NULL;
+	client->replyRemaining = NULL;
 }
 
-void rchkClientResetInputOnly(RchkClient* client, int bytesProcessed) {
-	int bytesLeft = client->readBufferOccupied - bytesProcessed;
-		
-	client->readState = ARCHKE_BSAR_ARRAY;		
-	client->readBufferOccupied = bytesLeft;
-	memmove(client->readBuffer, client->readBuffer + bytesProcessed, bytesLeft);
-	rchkClearClientCommandElementsList(client);
+void rchkClientResetQueryParserState(RchkClient* client) {
+	client->queryParserState = ARCHKE_BSAR_ARRAY;
+}
+
+void rchkClientResetQueryBufferState(RchkClient* client) {
+	client->queryBuffLen = 0;
+	client->queryBuffPos = 0;
 }
 
 void rchkClientReset(RchkClient* client) {
-	client->readState = ARCHKE_BSAR_ARRAY;
-	client->readBufferOccupied = 0;
-	memset(client->readBuffer, 0, ARCHKE_ELEMENTS_MEMORY_MAX_SIZE);
-	rchkClearClientCommandElementsList(client);
-	rchkClearClientOutputList(client);
+	rchkClientResetQueryParserState(client);
+	rchkClientResetQueryBufferState(client);
+	rchkClientResetArgv(client);
+	rchkClientResetReplyList(client);
 }
 
 void rchkClientFree(RchkClient* client) {
-    free(client->readBuffer);
-	rchkClearClientCommandElementsList(client);
-	rchkClearClientOutputList(client);
-    free(client->commandElements);
-    free(client->responseElements);
+    free(client->queryBuff);
+	rchkClientResetArgv(client);
+	rchkClientResetReplyList(client);
+    free(client->argv);
+    free(client->reply);
     free(client);
 }
 
@@ -194,12 +193,12 @@ int rchkAppendToReply(RchkClient* client, char* data, int dataSize) {
 	}
 	memcpy(element->bytes, data, element->size);
 
-	if (!client->responseElements) {
-		client->responseElements = element;
-		client->responseElementsTail = element;
+	if (!client->reply) {
+		client->reply = element;
+		client->replyTail = element;
 	} else {
-		client->responseElementsTail->next = element;
-		client->responseElementsTail = element;
+		client->replyTail->next = element;
+		client->replyTail = element;
 	}
 
 	return 0;
@@ -221,24 +220,24 @@ int rchkAppendIntegerToReply(RchkClient* client, int data) {
 	return 0;
 }
 
-int rchkProcessReadBuffer(RchkClient* client) {
-	if (client->readBufferOccupied == 0) { 
+int rchkProcessQueryBuffer(RchkClient* client) {
+	if (client->queryBuffLen == 0) {
 		return 0; 
 	}
 
-    RchkArrayElement* currentElement = NULL;
+    RchkQueryArg* arg = NULL;
 	int digit = 0;
 	int idx=0;
 
-	for (idx=0; idx < client->readBufferOccupied; idx++) {
-		char currentByte = client->readBuffer[idx];
+	for (idx=client->queryBuffPos; idx < client->queryBuffLen; idx++) {
+		char currentByte = client->queryBuff[idx];
 
-		switch(client->readState) {
+		switch(client->queryParserState) {
 			case ARCHKE_BSAR_ARRAY:
 				if (currentByte == '*') { 
-					client->readState = ARCHKE_BSAR_ARRAY_SIZE;
+					client->queryParserState = ARCHKE_BSAR_ARRAY_SIZE;
 				} else { 
-					client->readState = ARCHKE_BSAR_ERROR_EXPECTED_START_SIGN;
+					client->queryParserState = ARCHKE_BSAR_ERROR_EXPECTED_START_SIGN;
 					return -1;		
 				}
 				
@@ -246,51 +245,51 @@ int rchkProcessReadBuffer(RchkClient* client) {
 			case ARCHKE_BSAR_ARRAY_SIZE:
 				if (currentByte == '\r') continue;
 				if (currentByte == '\n') {
-					if (client->commandElementsCount > 0) {
-						client->readState = ARCHKE_BSAR_ELEMENT;
+					if (client->argc > 0) {
+						client->queryParserState = ARCHKE_BSAR_ELEMENT;
 						continue;
 					}
 
-					client->readState = ARCHKE_BSAR_DONE;
+					client->queryParserState = ARCHKE_BSAR_DONE;
 				}
 
 				digit = currentByte - '0';
 
 				if (0 <= digit && digit <= 9) {
-					client->commandElementsCount = client->commandElementsCount * 10 + digit;
+					client->argc = client->argc * 10 + digit;
 					continue;
 				}
 
 				break;
 			case ARCHKE_BSAR_ELEMENT:
 				if (currentByte == '$') { 
-					client->readState = ARCHKE_BSAR_ELEMENT_SIZE;
+					client->queryParserState = ARCHKE_BSAR_ELEMENT_SIZE;
 				} else { 
-					client->readState = ARCHKE_BSAR_ERROR_EXPECTED_ELEMENT_START_SIGN;
+					client->queryParserState = ARCHKE_BSAR_ERROR_EXPECTED_ELEMENT_START_SIGN;
 					return -1;		
 				}
 				
 				break;
 			case ARCHKE_BSAR_ELEMENT_SIZE:
-				currentElement = &client->commandElements[client->commandElementsCurrentIndex];
+				arg = &client->argv[client->argi];
 
 				if (currentByte == '\r') continue;
 				if (currentByte == '\n') {
-					if (currentElement->size > 0) {
-						currentElement->bytes = malloc(currentElement->size);
-						if (currentElement->bytes == NULL) {
+					if (arg->size > 0) {
+						arg->bytes = malloc(arg->size);
+						if (arg->bytes == NULL) {
 							rchkExitFailure("Cannot alloc memory for input array element data");
 						}
-						client->readState = ARCHKE_BSAR_ELEMENT_DATA;						
+						client->queryParserState = ARCHKE_BSAR_ELEMENT_DATA;
 						continue;
 					}
 
-					client->commandElementsCurrentIndex++;
+					client->argi++;
 
-					if (client->commandElementsCurrentIndex < client->commandElementsCount) {
-						client->readState = ARCHKE_BSAR_ELEMENT;
+					if (client->argi < client->argc) {
+						client->queryParserState = ARCHKE_BSAR_ELEMENT;
 					} else {
-						client->readState = ARCHKE_BSAR_DONE;
+						client->queryParserState = ARCHKE_BSAR_DONE;
 					}
 
 					continue;
@@ -299,23 +298,22 @@ int rchkProcessReadBuffer(RchkClient* client) {
 				digit = currentByte - '0';
 
 				if (0 <= digit && digit <= 9) {
-					currentElement->size = currentElement->size * 10 + digit;
-					continue;
+					arg->size = arg->size * 10 + digit;
 				}
 
 				break;
 			case ARCHKE_BSAR_ELEMENT_DATA:
-				currentElement = &client->commandElements[client->commandElementsCurrentIndex];
+				arg = &client->argv[client->argi];
 
-				currentElement->bytes[currentElement->filled] = currentByte;
-				currentElement->filled++;
+				arg->bytes[arg->filled] = currentByte;
+				arg->filled++;
 
-				if (currentElement->filled == currentElement->size) {
-					client->commandElementsCurrentIndex++;
-					if (client->commandElementsCurrentIndex < client->commandElementsCount) {
-						client->readState = ARCHKE_BSAR_ELEMENT;
+				if (arg->filled == arg->size) {
+					client->argi++;
+					if (client->argi < client->argc) {
+						client->queryParserState = ARCHKE_BSAR_ELEMENT;
 					} else {
-						client->readState = ARCHKE_BSAR_DONE;
+						client->queryParserState = ARCHKE_BSAR_DONE;
 						goto read_done;
 					}
 				}
@@ -323,6 +321,8 @@ int rchkProcessReadBuffer(RchkClient* client) {
 				break;
 			case ARCHKE_BSAR_DONE: 
 				goto read_done;
+			default:
+				rchkExitFailure("Unknown query parse state");
 		}
 	}
 
@@ -331,7 +331,7 @@ read_done:
 }
 
 int rchkIsCompleteCommandReceived(RchkClient* client) {
-	return client->readState == ARCHKE_BSAR_DONE;
+	return client->queryParserState == ARCHKE_BSAR_DONE;
 }
 
 static void shutdownSignalHandler(int sig) {

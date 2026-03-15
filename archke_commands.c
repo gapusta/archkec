@@ -31,7 +31,7 @@ void initCommands(RchkKVStore* commands) {
     Response (simple string): +<msg>\r\n
 */
 void echoCommand(RchkClient* client) {
-    RchkArrayElement* msg = &client->commandElements[1];
+    RchkQueryArg* msg = &client->argv[1];
     rchkAppendToReply(client, ARCHKE_SIMPLE_STRING_PREFIX, strlen(ARCHKE_SIMPLE_STRING_PREFIX));
     rchkAppendToReply(client, msg->bytes, msg->size);
     rchkAppendToReply(client, ARCHKE_DELIMETER, strlen(ARCHKE_DELIMETER));
@@ -51,8 +51,8 @@ uint64_t rchkStrtoul(const char* string, const int size) {
 */
 void setCommand(RchkClient* client) {
     // 1.
-    RchkArrayElement* key = &client->commandElements[1];
-    RchkArrayElement* value = &client->commandElements[2];
+    RchkQueryArg* key = &client->argv[1];
+    RchkQueryArg* value = &client->argv[2];
 
     char* keyDup = rchkDuplicate(key->bytes, key->size);
     char* valueDup = rchkDuplicate(value->bytes, value->size);
@@ -63,8 +63,8 @@ void setCommand(RchkClient* client) {
     }
 
     // set expire
-    if (client->commandElementsCount > 4) {
-        const RchkArrayElement* ex = &client->commandElements[4];
+    if (client->argc > 4) {
+        const RchkQueryArg* ex = &client->argv[4];
         const uint64_t timeout = rchkStrtoul(ex->bytes, ex->size);
 
         rchkSetExpireTime(key->bytes, key->size, timeout * 1000);
@@ -80,7 +80,7 @@ void setCommand(RchkClient* client) {
     Response not found (null) : _\r\n
 */
 void getCommand(RchkClient* client) {
-    RchkArrayElement* key = &client->commandElements[1];
+    RchkQueryArg* key = &client->argv[1];
 
     RchkKVValue* value = rchkKVStoreGet(server.kvstore, key->bytes, key->size);
 
@@ -109,7 +109,7 @@ void getCommand(RchkClient* client) {
     f - key/value pair does not exist
 */
 void existsCommand(RchkClient* client) {
-    RchkArrayElement* key = &client->commandElements[1];
+    RchkQueryArg* key = &client->argv[1];
 
     RchkKVValue* value = rchkKVStoreGet(server.kvstore, key->bytes, key->size);
 
@@ -126,7 +126,7 @@ void existsCommand(RchkClient* client) {
 */
 void delCommand(RchkClient* client) {
     // 1.
-    RchkArrayElement* key = &client->commandElements[1];
+    RchkQueryArg* key = &client->argv[1];
 
     int deleted = rchkKVStoreDelete2(server.kvstore, key->bytes, key->size, rchkDelFreeKeyValue);
     rchkRemoveExpireTime(key->bytes, key->size);

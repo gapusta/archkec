@@ -11,8 +11,8 @@ client_tests: ../archke_tests.c ../archke_server.c archke_client_tests.c ../arch
 	rm *.o
 
 clean:
-	rm exe
+	rm -f *.o exe
 
 cleand: 
-	rm exed
+	rm -f *.o exed
 

@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "archke_tests.h"
-#include "archke_server.h"
+#include "../archke_tests.h"
+#include "../archke_server.h"
 
 #define MEMORY_ARENA_SIZE 1024
 
@@ -14,17 +14,17 @@ void test1() {
 	RchkClient* client = rchkClientNew(-1);
 	rchkAssertNotNull(client, "client null check");
 
-	client->readBufferOccupied = inputSize; 
-	memcpy(client->readBuffer, input, inputSize); 
-	rchkProcessInputQuery(client);
+	client->queryBuffLen = inputSize;
+	memcpy(client->queryBuff, input, inputSize);
+	rchkProcessQueryBuffer(client);
 
-	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
+	rchkAssertEqualsInt(1, rchkIsCompleteCommandReceived(client), "query finish check");
 
-	RchkArrayElement* elements = client->in;
+	RchkQueryArg* elements = client->argv;
 
 	rchkAssertNotNull(elements, "elements null check");
 	
-	int elementsSize = client->inCount;
+	int elementsSize = client->argc;
 
 	rchkAssertEqualsInt(3, elementsSize, "elements size check");
 	rchkAssertEqualsInt(3, elements[0].size, "element #0 size check");
@@ -56,31 +56,32 @@ void test2() {
 	RchkClient* client = rchkClientNew(-1);
 	rchkAssertNotNull(client, "client null check");
 
-	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
+	client->queryBuffLen = inputSize1; memcpy(client->queryBuff, input1, inputSize1); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize2; memcpy(client->queryBuff, input2, inputSize2); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize3; memcpy(client->queryBuff, input3, inputSize3); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize4; memcpy(client->queryBuff, input4, inputSize4); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize5; memcpy(client->queryBuff, input5, inputSize5); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize6; memcpy(client->queryBuff, input6, inputSize6); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize7; memcpy(client->queryBuff, input7, inputSize7); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize8; memcpy(client->queryBuff, input8, inputSize8); rchkProcessQueryBuffer(client);
 
-	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
+	rchkAssertEqualsInt(1, rchkIsCompleteCommandReceived(client), "query finish check");
 
-	RchkArrayElement* elements = client->in;
-	
+	RchkQueryArg* elements = client->argv;
+
 	rchkAssertNotNull(elements, "elements null check");
-	
-	int elementsSize = client->inCount;
+
+	int elementsSize = client->argc;
 
 	rchkAssertEqualsInt(1, elementsSize, "elements size check");
 	rchkAssertEqualsInt(3, elements[0].size, "element #0 size check");
 	rchkAssertEqualsContent("SET", elements[0].bytes, 3, "element #0 value check");
 
 	rchkClientFree(client);
-	
+
 	printf("Test #2 passed\n");
 }
+
 
 void test3() {
 	rchkTestSetName("Test #3");
@@ -99,30 +100,30 @@ void test3() {
 	RchkClient* client = rchkClientNew(-1);
 	rchkAssertNotNull(client, "client null check");
 
-	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize9; memcpy(client->readBuffer, input9, inputSize9); rchkProcessInputQuery(client);
+	client->queryBuffLen = inputSize1; memcpy(client->queryBuff, input1, inputSize1); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize2; memcpy(client->queryBuff, input2, inputSize2); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize3; memcpy(client->queryBuff, input3, inputSize3); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize4; memcpy(client->queryBuff, input4, inputSize4); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize5; memcpy(client->queryBuff, input5, inputSize5); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize6; memcpy(client->queryBuff, input6, inputSize6); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize7; memcpy(client->queryBuff, input7, inputSize7); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize8; memcpy(client->queryBuff, input8, inputSize8); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize9; memcpy(client->queryBuff, input9, inputSize9); rchkProcessQueryBuffer(client);
 
-	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
+	rchkAssertEqualsInt(1, rchkIsCompleteCommandReceived(client), "query finish check");
 
-	RchkArrayElement* elements = client->in;
-	
+	RchkQueryArg* elements = client->argv;
+
 	rchkAssertNotNull(elements, "elements null check");
-	
-	int elementsSize = client->inCount;
+
+	int elementsSize = client->argc;
 
 	rchkAssertEqualsInt(1, elementsSize, "elements size check");
 	rchkAssertEqualsInt(11, elements[0].size, "element #0 size check");
 	rchkAssertEqualsContent("DISTINGUISH", elements[0].bytes, 11, "element #0 value check");
 
 	rchkClientFree(client);
-	
+
 	printf("Test #3 passed\n");
 }
 
@@ -151,69 +152,69 @@ void test4() {
 	RchkClient* client = rchkClientNew(-1);
 	rchkAssertNotNull(client, "client null check");
 
-	client->readBufferOccupied = inputSize1; memcpy(client->readBuffer, input1, inputSize1); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize2; memcpy(client->readBuffer, input2, inputSize2); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize3; memcpy(client->readBuffer, input3, inputSize3); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize4; memcpy(client->readBuffer, input4, inputSize4); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize5; memcpy(client->readBuffer, input5, inputSize5); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize6; memcpy(client->readBuffer, input6, inputSize6); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize7; memcpy(client->readBuffer, input7, inputSize7); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize8; memcpy(client->readBuffer, input8, inputSize8); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize9; memcpy(client->readBuffer, input9, inputSize9); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize10; memcpy(client->readBuffer, input10, inputSize10); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize11; memcpy(client->readBuffer, input11, inputSize11); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize12; memcpy(client->readBuffer, input12, inputSize12); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize13; memcpy(client->readBuffer, input13, inputSize13); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize14; memcpy(client->readBuffer, input14, inputSize14); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize15; memcpy(client->readBuffer, input15, inputSize15); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize16; memcpy(client->readBuffer, input16, inputSize16); rchkProcessInputQuery(client);
-	client->readBufferOccupied = inputSize17; memcpy(client->readBuffer, input17, inputSize17); rchkProcessInputQuery(client);
-	
-	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
+	client->queryBuffLen = inputSize1; memcpy(client->queryBuff, input1, inputSize1); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize2; memcpy(client->queryBuff, input2, inputSize2); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize3; memcpy(client->queryBuff, input3, inputSize3); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize4; memcpy(client->queryBuff, input4, inputSize4); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize5; memcpy(client->queryBuff, input5, inputSize5); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize6; memcpy(client->queryBuff, input6, inputSize6); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize7; memcpy(client->queryBuff, input7, inputSize7); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize8; memcpy(client->queryBuff, input8, inputSize8); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize9; memcpy(client->queryBuff, input9, inputSize9); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize10; memcpy(client->queryBuff, input10, inputSize10); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize11; memcpy(client->queryBuff, input11, inputSize11); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize12; memcpy(client->queryBuff, input12, inputSize12); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize13; memcpy(client->queryBuff, input13, inputSize13); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize14; memcpy(client->queryBuff, input14, inputSize14); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize15; memcpy(client->queryBuff, input15, inputSize15); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize16; memcpy(client->queryBuff, input16, inputSize16); rchkProcessQueryBuffer(client);
+	client->queryBuffLen = inputSize17; memcpy(client->queryBuff, input17, inputSize17); rchkProcessQueryBuffer(client);
 
-	RchkArrayElement* elements = client->in;
-	
+	rchkAssertEqualsInt(1, rchkIsCompleteCommandReceived(client), "query finish check");
+
+	RchkQueryArg* elements = client->argv;
+
 	rchkAssertNotNull(elements, "elements null check");
-	
-	int elementsSize = client->inCount;
+
+	int elementsSize = client->argc;
 
 	rchkAssertEqualsInt(3, elementsSize, "elements size check");
 	rchkAssertEqualsInt(11, elements[0].size, "element #0 size check");
 	rchkAssertEqualsInt(5, elements[1].size, "element #1 size check");
 	rchkAssertEqualsInt(7, elements[2].size, "element #2 size check");
-	
+
 	rchkAssertEqualsContent("DISTINGUISH", elements[0].bytes, 11, "element #0 value check");
 	rchkAssertEqualsContent("MYKEY", elements[1].bytes, 5, "element #1 value check");
 	rchkAssertEqualsContent("MYVALUE", elements[2].bytes, 7, "element #2 value check");
 
 	rchkClientFree(client);
-	
+
 	printf("Test #4 passed\n");
 }
 
 void test5() {
 	rchkTestSetName("Test #5");
 
-	char* input = "*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE*3\r\n$3\r\nSET$6\r\nMYKEY2$8\r\nMYVALUE2"; 
+	char* input = "*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE*3\r\n$3\r\nSET$6\r\nMYKEY2$8\r\nMYVALUE2";
 	int inputSize = strlen(input);
 
 	RchkClient* client = rchkClientNew(-1);
 	rchkAssertNotNull(client, "client null check");
 
-	client->readBufferOccupied = inputSize; 
-	memcpy(client->readBuffer, input, inputSize); 
-	
-	int processed = rchkProcessInputQuery(client);
+	client->queryBuffLen = inputSize;
+	memcpy(client->queryBuff, input, inputSize);
 
-	rchkAssertEqualsInt(1, rchkIsProcessInputQueryDone(client), "query finish check");
+	int processed = rchkProcessQueryBuffer(client);
+
+	rchkAssertEqualsInt(1, rchkIsCompleteCommandReceived(client), "query finish check");
 
 	rchkAssertEqualsInt(strlen("*3\r\n$3\r\nSET$5\r\nMYKEY$7\r\nMYVALUE"), processed, "processed bytes amount check");
 
-	RchkArrayElement* elements = client->in;
+	RchkQueryArg* elements = client->argv;
 
 	rchkAssertNotNull(elements, "elements null check");
-	
-	int elementsSize = client->inCount;
+
+	int elementsSize = client->argc;
 
 	rchkAssertEqualsInt(3, elementsSize, "elements size check");
 	rchkAssertEqualsInt(3, elements[0].size, "element #0 size check");
