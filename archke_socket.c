@@ -38,12 +38,12 @@ int rchkSocketWrite(int socketFd, char* buffer, int n) {
 	return nbytes;
 }
 
-int rchkSocketWritev(int socketFd, RchkSocketBuffer* buffers, int n) {
+int rchkSocketWritev(int socketFd, RchkIovBlock* iov, int n) {
 	struct iovec io[n];
 
 	for(int i=0; i<n; i++) {
-		io[i].iov_base = buffers[i].buffer;
-		io[i].iov_len = buffers[i].size;
+		io[i].iov_base = iov[i].buffer;
+		io[i].iov_len = iov[i].size;
 	}
 
 	ssize_t nbytes = writev(socketFd, io, n);

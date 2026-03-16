@@ -1,7 +1,7 @@
 #ifndef ARCHKE_SERVER_EVENT_HANDLERS
 #define ARCHKE_SERVER_EVENT_HANDLERS
 
-#define ARCHKE_WRITE_MAX_OUTPUTS 128
+#define ARCHKE_IOV_MAX 1024
 
 #include "archke_event_loop.h"
 

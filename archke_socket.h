@@ -7,12 +7,12 @@
 typedef struct RchkSocketBuffer {
     char* buffer;
     int size;
-} RchkSocketBuffer;
+} RchkIovBlock;
 
 int  rchkSocketSetMode(int socketFd, int mode);
 int  rchkSocketRead(int socketFd, char* buffer, int bufferSize);
 int  rchkSocketWrite(int socketFd, char* buffer, int n);
-int  rchkSocketWritev(int socketFd, RchkSocketBuffer* buffers, int n);
+int  rchkSocketWritev(int socketFd, RchkIovBlock* iov, int n);
 void rchkSocketShutdownWrite(int socketFd);
 void rchkSocketShutdownRead(int socketFd);
 void rchkSocketShutdown(int socketFd);

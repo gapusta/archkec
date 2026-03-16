@@ -19,7 +19,7 @@ typedef struct RchkResponseElement {
 	int size;
 	char* bytes;
 	struct RchkResponseElement* next;
-} RchkResponseElement;
+} RchkReplyBlock;
 
 typedef struct RchkClient {
 	int fd; /* socket fd */
@@ -32,15 +32,15 @@ typedef struct RchkClient {
 	int queryBuffPos; /* points at first unprocessed byte in query buffer */
 
 	// any command is expected to be an array of bulk/binary strings
-    RchkQueryArg* argv; // arguments of current command
-	int argc; // arguments count of current command
-	int argi; // currently processed argument
+    RchkQueryArg* argv; /* arguments of current command */
+	int argc; /* arguments count of current command */
+	int argi; /* currently processed argument */
 
 	// output
 	// TODO: Make it a linked list
-	RchkResponseElement* reply;
-	RchkResponseElement* replyTail;
-	RchkResponseElement* replyRemaining; // not yet written response elements
+	RchkReplyBlock* reply;
+	RchkReplyBlock* replyTail;
+	RchkReplyBlock* replyRemaining; /* not yet written response elements */
 } RchkClient;
 
 typedef struct RchkServer {

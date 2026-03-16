@@ -130,6 +130,15 @@ client_create_err:
     return NULL;
 }
 
+void rchkClientResetQueryParserState(RchkClient* client) {
+	client->queryParserState = ARCHKE_BSAR_ARRAY;
+}
+
+void rchkClientResetQueryBufferState(RchkClient* client) {
+	client->queryBuffLen = 0;
+	client->queryBuffPos = 0;
+}
+
 void rchkClientResetArgv(RchkClient* client) {
 	RchkQueryArg* argv = client->argv;
 	for (int i=0; i<client->argc; i++) {
@@ -143,9 +152,9 @@ void rchkClientResetArgv(RchkClient* client) {
 }
 
 static void rchkClientResetReplyList(RchkClient* client) {
-	RchkResponseElement* current = client->reply;
+	RchkReplyBlock* current = client->reply;
 	while (current != NULL) {
-		RchkResponseElement* next = current->next;
+		RchkReplyBlock* next = current->next;
 		free(current->bytes);
 		free(current);
 		current = next;
@@ -153,15 +162,6 @@ static void rchkClientResetReplyList(RchkClient* client) {
 	client->reply = NULL;
 	client->replyTail = NULL;
 	client->replyRemaining = NULL;
-}
-
-void rchkClientResetQueryParserState(RchkClient* client) {
-	client->queryParserState = ARCHKE_BSAR_ARRAY;
-}
-
-void rchkClientResetQueryBufferState(RchkClient* client) {
-	client->queryBuffLen = 0;
-	client->queryBuffPos = 0;
 }
 
 void rchkClientReset(RchkClient* client) {
@@ -181,7 +181,7 @@ void rchkClientFree(RchkClient* client) {
 }
 
 int rchkAppendToReply(RchkClient* client, char* data, int dataSize) {
-	RchkResponseElement* element = (RchkResponseElement*) malloc(sizeof(RchkResponseElement));
+	RchkReplyBlock* element = (RchkReplyBlock*) malloc(sizeof(RchkReplyBlock));
 	if (element == NULL) {
 		return -1;
 	}

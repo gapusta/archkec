@@ -13,19 +13,19 @@
 void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
 
-	RchkSocketBuffer buffs[ARCHKE_WRITE_MAX_OUTPUTS];
+	RchkIovBlock iov[ARCHKE_IOV_MAX];
 
-	int outputs = 0;
-	RchkResponseElement* element = client->replyRemaining;
-	while (element != NULL) {
-		buffs[outputs].size = element->size;
-		buffs[outputs].buffer = element->bytes;
-		outputs++;
-		element = element->next;
+	int iovc = 0; // io vector element count
+	RchkReplyBlock* block = client->replyRemaining;
+	while (block != NULL) {
+		iov[iovc].size = block->size;
+		iov[iovc].buffer = block->bytes;
+		iovc++;
+		block = block->next;
 	}
 
-	int bytesWrittenAmount = rchkSocketWritev(client->fd, buffs, outputs);
-	if (bytesWrittenAmount < 0) {
+	int written = rchkSocketWritev(client->fd, iov, iovc);
+	if (written < 0) {
 		logError("Write to client failed");
 		// close connections (exactly how it is handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))
 		rchkSocketShutdown(client->fd);
@@ -36,20 +36,20 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 		return;
 	}
 
-	element = client->replyRemaining;
-	while (element != NULL) {
-		if (bytesWrittenAmount < element->size) {
-			client->replyRemaining->bytes = element->bytes + bytesWrittenAmount;
-			client->replyRemaining->size = element->size - bytesWrittenAmount;
-			client->replyRemaining->next = element->next;
+	block = client->replyRemaining;
+	while (block != NULL) {
+		if (written < block->size) {
+			client->replyRemaining->bytes = block->bytes + written;
+			client->replyRemaining->size = block->size - written;
+			client->replyRemaining->next = block->next;
 			break;
 		}
-		bytesWrittenAmount -= element->size;
-		element = element->next;
+		written -= block->size;
+		block = block->next;
 	}
 
 	// check if all the data has been sent
-	if (element == NULL) {
+	if (block == NULL) {
 		rchkClientReset(client);
 
 		// register read handler for client
