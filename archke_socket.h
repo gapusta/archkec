@@ -4,7 +4,7 @@
 #define ARCHKE_SOCKET_MODE_BLOCKING 1
 #define ARCHKE_SOCKET_MODE_NON_BLOCKING 2
 
-typedef struct RchkSocketBuffer {
+typedef struct RchkIovBlock {
     char* buffer;
     int size;
 } RchkIovBlock;

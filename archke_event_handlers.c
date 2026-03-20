@@ -9,7 +9,6 @@
 #include "archke_logs.h"
 #include "archke_commands.h"
 
-// TODO: refactor
 void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
 
@@ -50,6 +49,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 
 	// check if all the data has been sent
 	if (block == NULL) {
+		//TODO: Reuse reply list instead of purging it after it has been completely sent
 		rchkClientReset(client);
 
 		// register read handler for client

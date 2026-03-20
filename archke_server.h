@@ -4,6 +4,11 @@
 #include "archke_event_loop.h"
 #include "archke_kvstore.h"
 
+/* command argument is considered big if it is bigger than or equal to this constant */
+#define ARCHKE_CMD_BIG_ARG (32*1024)
+/* default query buffer size */
+#define ARCHKE_QUERY_BUFFER_DEFAULT_SIZE (16*1024)
+
 #define ARCHKE_ACTIVE_EXPIRY_TIME_PERCENT 25
 
 #define ARCHKE_BSAR_ERROR_EXPECTED_START_SIGN -1
