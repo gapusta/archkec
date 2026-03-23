@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <string.h>
 #include "archke_server.h"
 #include "archke_socket.h"
 #include "archke_event_loop.h"
 #include "archke_event_handlers.h"
 #include "archke_logs.h"
 #include "archke_commands.h"
+#include "archke_error.h"
 
 void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
@@ -66,8 +68,22 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 
 void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
-	
+
+	// TODO: move to separate function
+	if (client->newQueryBuffCap > 0) {
+		free(client->queryBuff);
+		char* buff = malloc(client->newQueryBuffCap * sizeof(char));
+		if (buff == NULL) {
+			rchkExitFailure("Cannot realloc memory for query buff");
+		}
+		memset(buff, 0, client->newQueryBuffCap);
+		client->queryBuff = buff;
+		client->queryBuffCap = client->newQueryBuffCap;
+		client->newQueryBuffCap = -1;
+	}
+
 	int bytes = rchkSocketRead(client->fd, client->queryBuff, client->queryBuffCap);
+
 	if (bytes < 0) {
 		logError("Read from client failed");
 		// close connection (exactly how it is handled in Redis. See networking.c -> (freeClient(c) -> unlinkClient(c)))

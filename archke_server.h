@@ -6,8 +6,10 @@
 
 /* command argument is considered big if it is bigger than or equal to this constant */
 #define ARCHKE_CMD_BIG_ARG (32*1024)
+// #define ARCHKE_CMD_BIG_ARG 9 // for tests
 /* default query buffer size */
 #define ARCHKE_QUERY_BUFFER_DEFAULT_SIZE (16*1024)
+// #define ARCHKE_QUERY_BUFFER_DEFAULT_SIZE 5 // for tests
 
 #define ARCHKE_ACTIVE_EXPIRY_TIME_PERCENT 25
 
@@ -35,6 +37,7 @@ typedef struct RchkClient {
 	int queryBuffCap; /* query buffer capacity */
 	int queryBuffLen; /* how much of query buffer is occupied by query bytes */
 	int queryBuffPos; /* points at first unprocessed byte in query buffer */
+	int newQueryBuffCap; /* if it is bigger than zero, then the query buff needs to be resized up to this value */
 
 	// any command is expected to be an array of bulk/binary strings
     RchkQueryArg* argv; /* arguments of current command */

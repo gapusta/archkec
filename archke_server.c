@@ -109,6 +109,7 @@ RchkClient* rchkClientNew(int fd) {
     client->queryParserState = ARCHKE_BSAR_ARRAY;
     client->queryBuff = queryBuff;
     client->queryBuffCap = ARCHKE_QUERY_BUFFER_DEFAULT_SIZE;
+    client->newQueryBuffCap = -1;
     client->queryBuffLen = 0;
 	client->queryBuffPos = 0;
     
@@ -282,17 +283,9 @@ int rchkProcessQueryBuffer(RchkClient* client) {
 						// if arg is big, resize query buff to fit what it already has + the entire argument
 						if (arg->size > ARCHKE_CMD_BIG_ARG) {
 							int remaining = arg->size - (client->queryBuffLen - (idx + 1));
-							int newCapacity = client->queryBuffLen + remaining;
-							if (
-								remaining > 0 && // there are still the arg bytes not in the query buff
-								client->queryBuffCap < newCapacity // the arg cannot fit into current query buff
-							) {
-								char* buff = realloc(client->queryBuff, newCapacity);
-								if (buff == NULL) {
-									rchkExitFailure("Cannot realloc memory for query buff");
-								}
-								client->queryBuff = buff;
-								client->queryBuffCap = newCapacity;
+							if (client->queryBuffCap < remaining) {
+								// the remaining arg bytes cannot fit into current query buff
+								client->newQueryBuffCap = remaining;
 							}
 						}
 						client->queryParserState = ARCHKE_BSAR_ELEMENT_BYTES;
