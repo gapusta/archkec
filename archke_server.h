@@ -6,10 +6,8 @@
 
 /* command argument is considered big if it is bigger than or equal to this constant */
 #define ARCHKE_CMD_BIG_ARG (32*1024)
-// #define ARCHKE_CMD_BIG_ARG 9 // for tests
 /* default query buffer size */
 #define ARCHKE_QUERY_BUFFER_DEFAULT_SIZE (16*1024)
-// #define ARCHKE_QUERY_BUFFER_DEFAULT_SIZE 5 // for tests
 
 #define ARCHKE_ACTIVE_EXPIRY_TIME_PERCENT 25
 
