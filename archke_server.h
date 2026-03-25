@@ -63,6 +63,7 @@ extern RchkServer server;
 void rchkServerInit();
 
 RchkClient* rchkClientNew(int fd);
+void rchkResizeQueryBuffer(RchkClient* client);
 void rchkClientResetQueryBufferState(RchkClient* client);
 void rchkClientResetQueryParserState(RchkClient* client);
 void rchkClientResetArgv(RchkClient* client);

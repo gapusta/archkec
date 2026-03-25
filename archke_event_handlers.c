@@ -69,18 +69,7 @@ void rchkHandleWriteEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* ev
 void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* event, void* clientData) {
 	RchkClient* client = (RchkClient*) clientData;
 
-	// TODO: move to separate function
-	if (client->newQueryBuffCap > 0) {
-		free(client->queryBuff);
-		char* buff = malloc(client->newQueryBuffCap * sizeof(char));
-		if (buff == NULL) {
-			rchkExitFailure("Cannot realloc memory for query buff");
-		}
-		memset(buff, 0, client->newQueryBuffCap);
-		client->queryBuff = buff;
-		client->queryBuffCap = client->newQueryBuffCap;
-		client->newQueryBuffCap = -1;
-	}
+	rchkResizeQueryBuffer(client);
 
 	int bytes = rchkSocketRead(client->fd, client->queryBuff, client->queryBuffCap);
 

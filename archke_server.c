@@ -130,6 +130,25 @@ client_create_err:
     return NULL;
 }
 
+/**
+ * Resizes the client's query buffer if required
+ *
+ * @param client the client, owner of the query buffer
+ */
+void rchkResizeQueryBuffer(RchkClient* client) {
+	if (client->newQueryBuffCap > 0) {
+		free(client->queryBuff);
+		char* buff = malloc(client->newQueryBuffCap * sizeof(char));
+		if (buff == NULL) {
+			rchkExitFailure("Cannot realloc memory for query buff");
+		}
+		memset(buff, 0, client->newQueryBuffCap);
+		client->queryBuff = buff;
+		client->queryBuffCap = client->newQueryBuffCap;
+		client->newQueryBuffCap = -1;
+	}
+}
+
 void rchkClientResetQueryParserState(RchkClient* client) {
 	client->queryParserState = ARCHKE_BSAR_ARRAY;
 }
