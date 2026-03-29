@@ -20,10 +20,10 @@ typedef struct RchkQueryArg {
 	char* bytes;
 } RchkQueryArg;
 
-typedef struct RchkResponseElement {
+typedef struct RchkReplyBlock {
 	int size;
 	char* bytes;
-	struct RchkResponseElement* next;
+	struct RchkReplyBlock* next;
 } RchkReplyBlock;
 
 typedef struct RchkClient {
