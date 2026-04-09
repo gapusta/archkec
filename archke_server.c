@@ -62,6 +62,15 @@ void rchkServerInit() {
 		errorMessage = "Db keystore expire creation failed";
 		goto err;
 	}
+	server.clientCount = 0;
+	server.clients = malloc(ARCHKE_CLIENTS_MAX_AMOUNT * sizeof(RchkClient*));
+	if (server.clients == NULL) {
+		errorMessage = "Cannot allocate memory for clients list";
+		goto err;
+	}
+	for (int i=0; i < ARCHKE_CLIENTS_MAX_AMOUNT; i++) {
+		server.clients[i] = NULL;
+	}
 
 	setupSignalHandlers();
 
@@ -109,17 +118,21 @@ RchkClient* rchkClientNew(int fd) {
     client->queryParserState = ARCHKE_BSAR_ARRAY;
     client->queryBuff = queryBuff;
     client->queryBuffCap = ARCHKE_QUERY_BUFFER_DEFAULT_SIZE;
-    client->newQueryBuffCap = -1;
     client->queryBuffLen = 0;
 	client->queryBuffPos = 0;
-    
+	client->queryBuffPeak = 0;
+
     client->argv = argv;
     client->argi = 0;
     client->argc = 0;
+    client->argRemaining = 0;
 
 	client->reply = NULL;
 	client->replyTail = NULL;
 	client->replyRemaining = NULL; // not yet written response elements
+
+	server.clients[server.clientCount] = client;
+	server.clientCount++;
 
     return client;
 
@@ -136,16 +149,44 @@ client_create_err:
  * @param client the client, owner of the query buffer
  */
 void rchkResizeQueryBuffer(RchkClient* client) {
-	if (client->newQueryBuffCap > 0) {
+	int newSize = client->argRemaining;
+
+	if (newSize > ARCHKE_CMD_BIG_ARG && client->queryBuffCap < newSize) {
+		// the remaining argument bytes cannot fit into current query buff
 		free(client->queryBuff);
-		char* buff = malloc(client->newQueryBuffCap * sizeof(char));
+		char* buff = malloc(newSize * sizeof(char));
 		if (buff == NULL) {
 			rchkExitFailure("Cannot realloc memory for query buff");
 		}
-		memset(buff, 0, client->newQueryBuffCap);
+		memset(buff, 0, newSize);
 		client->queryBuff = buff;
-		client->queryBuffCap = client->newQueryBuffCap;
-		client->newQueryBuffCap = -1;
+		client->queryBuffCap = newSize;
+	}
+}
+
+static void clientCronResizeQueryBuffer(RchkClient* client) {
+	if (
+		/* Only resize the query buffer
+		 * if the buffer is actually wasting at least a few kbytes */
+		client->queryBuffCap - client->queryBuffLen < 1024*4 &&
+		client->queryBuffCap > ARCHKE_RESIZE_THRESHOLD &&
+		client->queryBuffPeak < client->queryBuffCap/2
+	) {
+		int newSize = client->queryBuffPeak;
+		if (newSize < client->argRemaining) newSize = client->argRemaining;
+		if (newSize < ARCHKE_QUERY_BUFFER_DEFAULT_SIZE) newSize = ARCHKE_QUERY_BUFFER_DEFAULT_SIZE;
+
+		if (newSize == client->queryBuffCap) return;
+
+		free(client->queryBuff);
+		char* buff = malloc(newSize * sizeof(char));
+		if (buff == NULL) {
+			rchkExitFailure("Cannot realloc memory for query buff");
+		}
+		memset(buff, 0, newSize);
+		client->queryBuff = buff;
+		client->queryBuffCap = newSize;
+		client->queryBuffPeak = 0;
 	}
 }
 
@@ -196,6 +237,11 @@ void rchkClientFree(RchkClient* client) {
 	rchkClientResetReplyList(client);
     free(client->argv);
     free(client->reply);
+	for (int i=0; i<server.clientCount; i++) {
+		if (server.clients[i] == client) {
+			server.clients[i] = NULL;
+		}
+	}
     free(client);
 }
 
@@ -299,13 +345,9 @@ int rchkProcessQueryBuffer(RchkClient* client) {
 						if (arg->bytes == NULL) {
 							rchkExitFailure("Cannot alloc memory for input array element data");
 						}
-						// if arg is big, resize query buff to fit what it already has + the entire argument
-						if (arg->size > ARCHKE_CMD_BIG_ARG) {
-							int remaining = arg->size - (client->queryBuffLen - (idx + 1));
-							if (client->queryBuffCap < remaining) {
-								// the remaining arg bytes cannot fit into current query buff
-								client->newQueryBuffCap = remaining;
-							}
+						client->argRemaining = arg->size - (client->queryBuffLen - (idx + 1));
+						if (client->argRemaining < 0) {
+							client->argRemaining = 0;
 						}
 						client->queryParserState = ARCHKE_BSAR_ELEMENT_BYTES;
 						continue;
@@ -337,6 +379,7 @@ int rchkProcessQueryBuffer(RchkClient* client) {
 
 				if (arg->filled == arg->size) {
 					client->argi++;
+					client->argRemaining = 0;
 					if (client->argi < client->argc) {
 						client->queryParserState = ARCHKE_BSAR_ELEMENT;
 					} else {
@@ -414,6 +457,16 @@ uint64_t rchkIncrementalRehashing(RchkKVStore* kvstore, uint64_t thresholdUs) {
 	return now - start;
 }
 
+void clientCron() {
+	for (int i=0; i<server.clientCount; i++) {
+		RchkClient* client = server.clients[i];
+
+		if (client == NULL) { continue; }
+
+		clientCronResizeQueryBuffer(client);
+	}
+}
+
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	if (server.shutdown) {
 		// TODO: close listening socket? (Apparently this allows faster restarts)
@@ -443,6 +496,9 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	// Incremental rehashing
 	rchkIncrementalRehashing(server.kvstore, INCREMENTAL_REHASHING_TIME_THRESHOLD);
 	rchkIncrementalRehashing(server.expire, INCREMENTAL_REHASHING_TIME_THRESHOLD);
+
+	// handle client related job
+	clientCron();
 
 	return 1000/server.hz;
 }

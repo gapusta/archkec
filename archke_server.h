@@ -6,6 +6,8 @@
 
 /* command argument is considered big if it is bigger than or equal to this constant */
 #define ARCHKE_CMD_BIG_ARG (32*1024)
+/* query buffer resize threshold */
+#define ARCHKE_RESIZE_THRESHOLD (32*1024)
 /* default query buffer size */
 #define ARCHKE_QUERY_BUFFER_DEFAULT_SIZE (16*1024)
 
@@ -13,6 +15,8 @@
 
 #define ARCHKE_BSAR_ERROR_EXPECTED_START_SIGN -1
 #define ARCHKE_BSAR_ERROR_EXPECTED_ELEMENT_START_SIGN -2
+
+#define ARCHKE_CLIENTS_MAX_AMOUNT 1024
 
 typedef struct RchkQueryArg {
 	int filled;
@@ -35,12 +39,13 @@ typedef struct RchkClient {
 	int queryBuffCap; /* query buffer capacity */
 	int queryBuffLen; /* how much of query buffer is occupied by query bytes */
 	int queryBuffPos; /* points at first unprocessed byte in query buffer */
-	int newQueryBuffCap; /* if it is bigger than zero, then the query buff needs to be resized up to this value */
+	int queryBuffPeak; /* peak query buffer usage for the last 100 ms or more */
 
 	// any command is expected to be an array of bulk/binary strings
     RchkQueryArg* argv; /* arguments of current command */
 	int argc; /* arguments count of current command */
 	int argi; /* currently processed argument */
+	int argRemaining; /* currently processed argument length */
 
 	// output
 	// TODO: Make it a linked list
@@ -56,6 +61,9 @@ typedef struct RchkServer {
 	RchkKVStore* kvstore; /* stores data */
 	RchkKVStore* commands; /* stores executable commands (e.g. 'SET', 'GET') */
 	RchkKVStore* expire; /* stores when keys are supposed to expire */
+	// TODO: make it a linked list
+	RchkClient** clients; /* list of active clients */
+	int clientCount; /* list of active clients count */
 } RchkServer;
 
 extern RchkServer server;

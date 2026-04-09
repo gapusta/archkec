@@ -97,6 +97,8 @@ void rchkHandleReadEvent(RchkEventLoop* eventLoop, int fd, struct RchkEvent* eve
 	}
 	client->queryBuffLen = bytes;
 
+	if (client->queryBuffPeak < bytes) { client->queryBuffPeak = bytes; }
+
 	// pipelining
 	do {
 		client->queryBuffPos += rchkProcessQueryBuffer(client);
