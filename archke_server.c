@@ -144,7 +144,8 @@ client_create_err:
 }
 
 /**
- * Resizes the client's query buffer if required
+ * Resizes the client's query buffer before reading from network if an argument is big
+ * to possibly fit the entire remaining bytes of the argument in one read
  *
  * @param client the client, owner of the query buffer
  */
@@ -153,22 +154,30 @@ void rchkResizeQueryBuffer(RchkClient* client) {
 
 	if (newSize > ARCHKE_CMD_BIG_ARG && client->queryBuffCap < newSize) {
 		// the remaining argument bytes cannot fit into current query buff
-		free(client->queryBuff);
-		char* buff = malloc(newSize * sizeof(char));
-		if (buff == NULL) {
-			rchkExitFailure("Cannot realloc memory for query buff");
+		char* temp = realloc(client->queryBuff, newSize);
+
+		if (temp == NULL) {
+			// If realloc fails, we exit as per your original logic
+			rchkExitFailure("Cannot realloc memory for query buff expansion");
 		}
-		memset(buff, 0, newSize);
-		client->queryBuff = buff;
+
+		memset(temp, 0, newSize);
+		client->queryBuff = temp;
 		client->queryBuffCap = newSize;
+		client->queryBuffPeak = newSize;
 	}
 }
 
+/**
+ * Runs every 100 ms or more, tries to shrink the query buffer
+ *
+ * @param client the client, owner of the query buffer
+ */
 static void clientCronResizeQueryBuffer(RchkClient* client) {
 	if (
 		/* Only resize the query buffer
 		 * if the buffer is actually wasting at least a few kbytes */
-		client->queryBuffCap - client->queryBuffLen < 1024*4 &&
+		client->queryBuffCap - client->queryBuffLen > 1024*4 &&
 		client->queryBuffCap > ARCHKE_RESIZE_THRESHOLD &&
 		client->queryBuffPeak < client->queryBuffCap/2
 	) {
@@ -178,16 +187,18 @@ static void clientCronResizeQueryBuffer(RchkClient* client) {
 
 		if (newSize == client->queryBuffCap) return;
 
-		free(client->queryBuff);
-		char* buff = malloc(newSize * sizeof(char));
-		if (buff == NULL) {
-			rchkExitFailure("Cannot realloc memory for query buff");
+		char* temp = realloc(client->queryBuff, newSize);
+
+		if (temp == NULL) {
+			rchkExitFailure("Cannot realloc memory for query buff shrinkage");
 		}
-		memset(buff, 0, newSize);
-		client->queryBuff = buff;
+		memset(temp, 0, newSize);
+		client->queryBuff = temp;
 		client->queryBuffCap = newSize;
-		client->queryBuffPeak = 0;
 	}
+
+	client->queryBuffPeak = client->queryBuffLen;
+	if (client->queryBuffPeak < client->argRemaining) client->queryBuffPeak = client->argRemaining;
 }
 
 void rchkClientResetQueryParserState(RchkClient* client) {
