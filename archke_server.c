@@ -174,13 +174,21 @@ void rchkResizeQueryBuffer(RchkClient* client) {
  * @param client the client, owner of the query buffer
  */
 static void clientCronResizeQueryBuffer(RchkClient* client) {
+	int incomingBytesAmount = client->argRemaining;
+
 	if (
 		client->queryBuffCap > ARCHKE_RESIZE_THRESHOLD &&
 		client->queryBuffPeak < client->queryBuffCap/2
 	) {
 		int newSize = client->queryBuffPeak;
-		if (newSize < client->argRemaining) newSize = client->argRemaining;
 		if (newSize < ARCHKE_RESIZE_THRESHOLD) newSize = ARCHKE_QUERY_BUFFER_DEFAULT_SIZE;
+		/**
+		 * If we never knew how much bytes to expect, we would always
+		 * set newSize to queryBuffPeak (or ARCHKE_RESIZE_THRESHOLD if queryBuffPeak is too small),
+		 * but we know sometimes how much bytes at least gonna come so we resize
+		 * the query buffer to fit all incoming bytes that we know of in potentially single read() call
+		 */
+		if (newSize < incomingBytesAmount) newSize = incomingBytesAmount;
 
 		if (newSize == client->queryBuffCap) return;
 
@@ -195,7 +203,7 @@ static void clientCronResizeQueryBuffer(RchkClient* client) {
 	}
 
 	client->queryBuffPeak = 0;
-	if (client->queryBuffPeak < client->argRemaining) client->queryBuffPeak = client->argRemaining;
+	if (client->queryBuffPeak < incomingBytesAmount) client->queryBuffPeak = incomingBytesAmount;
 }
 
 void rchkClientResetQueryParserState(RchkClient* client) {
