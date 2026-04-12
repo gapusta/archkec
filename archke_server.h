@@ -85,5 +85,6 @@ int rchkAppendToReply(RchkClient* client, char* data, int dataSize);
 int rchkAppendIntegerToReply(RchkClient* client, int data); // turns integer to string and appends it to reply
 
 int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event);
+void clientCron();
 
 #endif
