@@ -175,15 +175,12 @@ void rchkResizeQueryBuffer(RchkClient* client) {
  */
 static void clientCronResizeQueryBuffer(RchkClient* client) {
 	if (
-		/* Only resize the query buffer
-		 * if the buffer is actually wasting at least a few kbytes */
-		client->queryBuffCap - client->queryBuffLen > 1024*4 &&
 		client->queryBuffCap > ARCHKE_RESIZE_THRESHOLD &&
 		client->queryBuffPeak < client->queryBuffCap/2
 	) {
 		int newSize = client->queryBuffPeak;
 		if (newSize < client->argRemaining) newSize = client->argRemaining;
-		if (newSize < ARCHKE_QUERY_BUFFER_DEFAULT_SIZE) newSize = ARCHKE_QUERY_BUFFER_DEFAULT_SIZE;
+		if (newSize < ARCHKE_RESIZE_THRESHOLD) newSize = ARCHKE_QUERY_BUFFER_DEFAULT_SIZE;
 
 		if (newSize == client->queryBuffCap) return;
 
@@ -197,7 +194,7 @@ static void clientCronResizeQueryBuffer(RchkClient* client) {
 		client->queryBuffCap = newSize;
 	}
 
-	client->queryBuffPeak = client->queryBuffLen;
+	client->queryBuffPeak = 0;
 	if (client->queryBuffPeak < client->argRemaining) client->queryBuffPeak = client->argRemaining;
 }
 
