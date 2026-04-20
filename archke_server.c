@@ -92,7 +92,6 @@ RchkClient* rchkClientNew(int fd) {
     if (queryBuff == NULL) {
         goto client_create_err;
     }
-	memset(queryBuff, 0, ARCHKE_QUERY_BUFFER_DEFAULT_SIZE);
 
 	// each command consists of elements/tokens. These elements are
 	// parsed into an array of bulk/binary strings before passed further.
@@ -125,7 +124,7 @@ RchkClient* rchkClientNew(int fd) {
     client->argv = argv;
     client->argi = 0;
     client->argc = 0;
-    client->argRemaining = 0;
+    client->argRemaining = -1;
 
 	client->reply = NULL;
 	client->replyTail = NULL;
@@ -161,10 +160,8 @@ void rchkResizeQueryBuffer(RchkClient* client) {
 			rchkExitFailure("Cannot realloc memory for query buff expansion");
 		}
 
-		memset(temp, 0, newSize);
 		client->queryBuff = temp;
 		client->queryBuffCap = newSize;
-		client->queryBuffPeak = newSize;
 	}
 }
 
@@ -173,9 +170,7 @@ void rchkResizeQueryBuffer(RchkClient* client) {
  *
  * @param client the client, owner of the query buffer
  */
-static void clientCronResizeQueryBuffer(RchkClient* client) {
-	int incomingBytesAmount = client->argRemaining;
-
+static void clientCronShrinkQueryBuffer(RchkClient* client) {
 	if (
 		client->queryBuffCap > ARCHKE_RESIZE_THRESHOLD &&
 		client->queryBuffPeak < client->queryBuffCap/2
@@ -188,22 +183,21 @@ static void clientCronResizeQueryBuffer(RchkClient* client) {
 		 * but we know sometimes how much bytes at least gonna come so we resize
 		 * the query buffer to fit all incoming bytes that we know of in potentially single read() call
 		 */
-		if (newSize < incomingBytesAmount) newSize = incomingBytesAmount;
+		if (newSize < client->argRemaining) newSize = client->argRemaining;
 
-		if (newSize == client->queryBuffCap) return;
+		if (newSize < client->queryBuffCap) {
+			char* temp = realloc(client->queryBuff, newSize);
 
-		char* temp = realloc(client->queryBuff, newSize);
-
-		if (temp == NULL) {
-			rchkExitFailure("Cannot realloc memory for query buff shrinkage");
+			if (temp == NULL) {
+				rchkExitFailure("Cannot realloc memory for query buff shrinkage");
+			}
+			client->queryBuff = temp;
+			client->queryBuffCap = newSize;
+			return;
 		}
-		memset(temp, 0, newSize);
-		client->queryBuff = temp;
-		client->queryBuffCap = newSize;
 	}
 
 	client->queryBuffPeak = 0;
-	if (client->queryBuffPeak < incomingBytesAmount) client->queryBuffPeak = incomingBytesAmount;
 }
 
 void rchkClientResetQueryParserState(RchkClient* client) {
@@ -363,6 +357,7 @@ int rchkProcessQueryBuffer(RchkClient* client) {
 						}
 						client->argRemaining = arg->size - (client->queryBuffLen - (idx + 1));
 						if (client->argRemaining < 0) {
+							// entire arg has been read/fit the buffer + some more bytes
 							client->argRemaining = 0;
 						}
 						client->queryParserState = ARCHKE_BSAR_ELEMENT_BYTES;
@@ -395,10 +390,10 @@ int rchkProcessQueryBuffer(RchkClient* client) {
 
 				if (arg->filled == arg->size) {
 					client->argi++;
-					client->argRemaining = 0;
 					if (client->argi < client->argc) {
 						client->queryParserState = ARCHKE_BSAR_ELEMENT;
 					} else {
+						client->argRemaining = -1;
 						client->queryParserState = ARCHKE_BSAR_DONE;
 						goto read_done;
 					}
@@ -479,7 +474,7 @@ void clientCron() {
 
 		if (client == NULL) { continue; }
 
-		clientCronResizeQueryBuffer(client);
+		clientCronShrinkQueryBuffer(client);
 	}
 }
 
@@ -513,7 +508,7 @@ int serverCron(RchkEventLoop* eventLoop, RchkTimeEvent* event) {
 	rchkIncrementalRehashing(server.kvstore, INCREMENTAL_REHASHING_TIME_THRESHOLD);
 	rchkIncrementalRehashing(server.expire, INCREMENTAL_REHASHING_TIME_THRESHOLD);
 
-	// handle client related job
+	// handle client related jobs
 	clientCron();
 
 	return 1000/server.hz;
