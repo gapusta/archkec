@@ -193,7 +193,6 @@ static void clientCronShrinkQueryBuffer(RchkClient* client) {
 			}
 			client->queryBuff = temp;
 			client->queryBuffCap = newSize;
-			return;
 		}
 	}
 
