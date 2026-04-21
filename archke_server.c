@@ -153,10 +153,9 @@ void rchkResizeQueryBuffer(RchkClient* client) {
 
 	if (newSize > ARCHKE_CMD_BIG_ARG && client->queryBuffCap < newSize) {
 		// the remaining argument bytes cannot fit into current query buff
-		char* temp = realloc(client->queryBuff, newSize);
-
+		free(client->queryBuff);
+		char* temp = malloc(sizeof(char)*newSize);
 		if (temp == NULL) {
-			// If realloc fails, we exit as per your original logic
 			rchkExitFailure("Cannot realloc memory for query buff expansion");
 		}
 
@@ -186,12 +185,13 @@ static void clientCronShrinkQueryBuffer(RchkClient* client) {
 		if (newSize < client->argRemaining) newSize = client->argRemaining;
 
 		if (newSize < client->queryBuffCap) {
-			char* temp = realloc(client->queryBuff, newSize);
-
-			if (temp == NULL) {
-				rchkExitFailure("Cannot realloc memory for query buff shrinkage");
+			free(client->queryBuff);
+			char* buff = malloc(sizeof(char)*newSize);
+			if (buff == NULL) {
+				rchkExitFailure("Cannot realloc memory for new, smaller query buff");
 			}
-			client->queryBuff = temp;
+
+			client->queryBuff = buff;
 			client->queryBuffCap = newSize;
 		}
 	}
